@@ -1,0 +1,5038 @@
+Pyspark & Spark SQL:
+
+---import belows:
+from pyspark.sql.types improt *
+from pyspark.sql.window improt *
+from pyspark.sql.functions improt *
+
+note:
+    dbutils.fs.ls("/folder/deep/")
+    dbutils.fs.mkdirs("/scene/makefolder/")
+%fs
+ls "dbfs:/file/folder/"
+rm -r "dbfs:/file/folder/"
+cp "dbfs:/file/folder/" "/temp/kill/"
+
+
+1.create dataFrame(Mannul):
+
+    schema1 = StructType([StructField('ID', IntegerType(), True), 
+                         StructField('NAME', StringType(), True), 
+                         StructField('GENDER', StringType(), True), 
+                         StructField('SALARY', IntegerType(), True), 
+                         StructField('STATE', StringType(), True), 
+                         StructField('CAPITAL', StringType(), True)])
+
+data1 = [(101, "Mohan", "Male", 1000, "Bihar", "Patna"),
+         (102, "Sohan", "Male", 1200, "Bihar", "Darbhanga"),
+         (103, "Ram", "Male", 1000, "Bihar", "Samastipur"),
+         (104, "Shyam", "Male", 5000, "UP", "Allahabad"),
+         (105, "Guddy", "Female", 4000, "Delhi", "Delhi"),
+         (105, "Guddy", "Female", 4000, "Delhi", "Delhi")]
+
+df1 = spark.createDataFrame(data=data1,schema=schema1)
+df1.show()
+df1.printSchema
+df1.display()
+
+2.create dataFrame(from csv file):
+df2 = spark.read.format("csv") \
+    .schema(schema1) \
+    .option("inferSchema", True) \
+    .option("header", True) \
+    .option("sep", ",") \
+    .option("mode", DROPMALFAILED/PERMISSIVE/FAILFAST) \
+    .load("/FileStore/tables/channels.csv")
+
+df2.show()
+df2.printSchema()
+df2.count()
+df2.display()
+
+
+3.create csv from dbutils:
+dbutils.fs.put("/schenarios/emp_data.csv","""EMPNO,ENAME,JOB,MGR,HIREDATE,SAL,COMM,DEPTNO
+7369,SMITH,CLERK,7902,17-12-80,800,null,20
+7499,ALLEN,SALESMAN,7698,20-02-81,1600,300,30
+7521,WARD,SALESMAN,7698,22-02-81,1250,500,30
+7566,JONES,MANAGER,7839,04-02-81,2975,null,20
+7654,MARTIN,SALESMAN,7698,21-09-81,1250,1400,30
+7698,SGR,MANAGER,7839,05-01-81,2850,null,30
+7782,RAVI,MANAGER,7839,06-09-81,2450,null,10
+1234,SEKHAR,doctor,7777,31-12-99,667,78,80""",True)
+
+dbutils.fs.put(dbutils.fs.put("/schenarios/double_pipe.csv","""id||name||loc
+1||ravi||Bangalore
+2||Raj||Chennai
+3||Mahesh||Hyderabad
+4||Prasad||Chennai
+5||Sridhar||Pune
+""",True))
+
+4.pyspark filter conditions:
+    filter(df.column ! = 50)
+    filter((df.column1>50) & (df.column2>50))
+    filter((df.column1>50) | (df.column2>50))
+    filter(df.column.isNull())
+    filter(df.column.isNotNull())
+    filter(df.column.contains(''))
+    filter(df.column.like('%%'))
+    filter(df.column.isin())
+    filter(df.column.startswith(''))
+    filter(df.column.endswith(''))
+    
+Exp: df4 = empDF.filter(empDF.salary ==5000)
+     display(df4)
+     df4 = empDF.filter(empDF.salary.isNull())
+     display(df4)
+
+
+5.Add, Drop, and Rename Column in Dataframe:
+    AddCol5 = empDF.withColumn("Location", lit("Mumbay")).show() ----using constant literal
+    AddCol51 = empDF.withColumn("Bonus", empDF.salary*0.1).withColumn("full_name", concat("first_name", lit(" "), "last_name"))
+    ----by calculation
+    display(AddCol51)
+
+    Rencol52 = empDF.withColumnRenamed("Name", "full_name").show()
+    
+    dropcol53 = empDF.drop("Name").drop("Bonus").show()
+
+
+6.Join:
+    df_join = empDF.join(deptDF, empDF.emp_id = deptDF.dept_id, "inner")
+    display(df_join)
+    df_join = empDF.join(deptDF, empDF.emp_id = deptDF.dept_id, "full")
+    display(df_join)
+
+7.Union & UnionAll:
+    emp_union = empDF.union(deptDF)
+    display(emp_union)
+
+    emp_dropDuplicate = emp_union.dropDuplicate()
+    display(emp_dropDuplicate)
+
+    emp_unionAll = empDF.unionAll(deptDF)
+    display(emp_unionAll)
+
+ if Schema mismatch(DF71 & DF72):
+    DF71 = emp_id, name, Doj, dept_id, gender
+    DF72 = name, dept_id, gender, emp_id, Doj then
+    DF73 = DF72.select(DF72.emp_id, DF72.name, DF72.Doj, DF72.emp_dept,DF72.gender )
+
+    DF_valid = DF71.union(DF73)
+
+
+8.Explode Function:
+    It is Pyspark function that returns a new row for each element in the given array or map.
+    Uses the default column name col for elements in the array and key and value for elements in the map
+
+    variants - Explode, Explode_outer, Posexplode, Posexplode_outer
+
+    array_applicance = [
+        ('Raje', ['TV', 'Refrigerater', 'Oven', 'AC']),
+        ('Raghav', ['AC', 'Washing Machine', None]),
+        ('Ram', ['Grinder', 'TV']),
+        ('Ramesh', ['Refrigerater', 'TV', None]),
+        ('Rajesh', None)
+
+    ]
+
+df_from_array = spark.createDataFrame(data = array_applicance, schema = ['Name', 'Appliances'])
+df_from_array.printSchema()
+display(df_from_array)
+
+df8 = df_from_array.select(df_from_array.Name, explode(df_from_array.Appliances))
+df8.display()
+
+df81 = df_from_array.select(df_from_array.Name, explode_outer(df_from_array.Brand))
+df81.display()
+
+df82 = df_from_array.select(df_from_array.Name, posexplode(df_from_array.Brand))
+df82.display()
+
+
+    map_applicance = [
+        ('Raje', {'TV':'Refrigerater', 'Oven':'AC'}),
+        ('Raghav', {'AC':'Washing Machine':'LG'}),
+        ('Ram', {'Grinder':'TV', 'Iron':''}),
+        ('Ramesh', {'Refrigerater', 'TV', None}),
+        ('Rajesh', None)
+
+    ]
+
+df_from_map = spark.createDataFrame(data = map_applicance, schema = ['Name', 'Brand'])
+
+df_from_map.printSchema()
+display(df_from_map)
+
+df83 = df_from_map.select(df_from_map.Name, explode(df_from_map.Brand))
+df83.display()
+
+
+df84 = df_from_map.select(df_from_map.Name, explode_outer(df_from_map.Brand))
+df84.display()
+
+df85 = df_from_map.select(df_from_map.Name, posexplode(df_from_map.Brand)
+df85.display()
+
+
+
+9.Case:
+    df9 = df.withColumn("Status", when(df.Marks>=50, "Pass").when(df.Marks<50, "Fail").otherwise("Absentee"))
+    df9.display()
+    or,
+
+    df9 = df.withColumn("new_status", expr("CASE WHEN Mark>=50 THEN 'Pass' " + "WHEN Mark<50 THEN 'Fail' " + "ELSE 'Absentee' END"))
+    df9.display()
+    or,
+
+    df9 = df.withColumn("Status", when(df.Marks>=80) & (df.Attendence>=80), "Distinction").when(df.Marks>=50) & (df.Attendence>=50), "Good").otherwise("Average"))
+    df9.display()
+
+10.Pivot:
+    
+    DF:
+    Company   Quarter   Revenue
+    ABC       Q1        6000
+    XYZ       Q1        5000
+    ABC       Q2        8000
+    XYZ       Q2        7000
+    Pivot_df = DF.groupBy("Company").pivot("Quarter").sum("Revenue")
+
+    pivot_df:
+    Company   Q1      Q2
+    ABC       6000    8000
+    XYZ       5000    7000
+
+
+11.Split and drop splitted column:
+    df11 = empDF.withColumn("first_name", split(empDF["Name"], ' ')getItem(0)).withColumn("last_name", split(empDF["Name"], ' ')getItem(1)).drop(empDF['Name'])
+
+
+12.join_string:
+
+    create iterable data:
+ 
+    column_list = empDF.columns    
+    print(column_list)
+    ['emp_id', 'Name', 'dept_id', 'salary'] 
+
+    joined_column_list = ",".join(column_list)  
+    emp_id,Name,dept_id,salary                  
+
+
+13.Handling Null:
+    
+    df13 = empDF.filter((empDF.Mark.isNull()) & (empDF.Attendence.isNull()))
+    display(df13)
+    df14 = empDF.filter((empDF.Mark.isNotNull()) | (empDF.Attendence.isNotNull()))
+    display(df14)
+
+    droping null values (ALL & ANY):
+        
+        drop_null = empDF.na.drop()
+        display(drop_null)
+        or,
+        drop_null_any = empDF.dropna("any")
+        display(drop_null_any)
+   
+        or,
+        drop_null_selected_column = empDF.na.drop(subset = ["Mark"])
+        display( drop_null_selected_column)
+
+        fill_null_all_columns_df = empDF.na.fill(value=0) OR empDF.fillna(value=0) OR empDF.na.fill(value="NA")
+        display(fill_null_all_columns_df) 
+
+14.Array:
+    array_zip_df = masterDF.withColumn("Zipped_value", F.array_zip("Array_score_1"))
+
+    array_intersect_df = masterDF.withColumn("Zipped_value", F.array_Intersect(masterDF["Array_score_1"],masterDF["Array_score_2"]))
+
+    array_except_df = masterDF.withColumn("Zipped_value", F.array_except(masterDF["Array_score_1"],masterDF["Array_score_2"]))
+                                    
+    array_sort_df = masterDF.withColumn("Zipped_value", F.array_zip(maserDF["Array_score_1"]))
+
+
+15.Bad Records Handling:
+    > Permissive - Include corrupt record in separate column
+    > Drop Malformed - Ignore corrupt records
+    > Fail Fast - Throw Exception if corrupt record
+
+
+16.Greatest vs Least vs Max vs Min:
+    
+    df_gretest = df.withColumn("Gretest", gretest("subject_1", "subject_2", "subject_3", "subject_4"))
+    df_least = df.withColumn("Least", least("subject_1", "subject_2", "subject_3", "subject_4"))
+    df_max = df.agg({'subject_1': 'max'})
+    df_max.display()
+    df_min = df.agg({'subject_1': 'max', 'subject_1': 'min', 'subject_2': 'min', 'subject_3': 'min', 'subject_4': 'min'})
+    df_min.display()
+
+17.Find Top or Bottom N Rows per Group:
+    Reverse rank to get Bottom N rows per group:
+        windowdept = Window.partitionBy("Subject").orderBy(col("Mark"))
+        df17 = df.withColumn("row", row_number().over(windowdept).orderBy("name","row"))
+        display(df17)
+
+        df171 = df17.filter(col("row") <=1)
+        df171.display()
+
+
+
+18.Null Count of Each Column in Dataframe:
+    result = df.select([count(when(col(c).isNull(), c)).alias(c) for c in df.columns])
+    display(result)
+
+    exp: name subject mark status attendence
+         1    3       5    4      0
+
+
+19.Number of Records per Partition in Dataframe:
+    
+df19 = spark.read.format("csv").option("inferSchema", True).option("header", True).option("sep", ",").option("mode", DROPMALFAILED/PERMISSIVE/FAILFAST).load("/FileStore/tables/channels.csv")
+
+df19.count() --- no. of records in Dataframe
+print(ddf19.count())
+
+
+from pyspark.sql.functions import spark_partition_id or import *
+
+print(df19.rdd.getNumPartitions()) --- default partition count
+df19.withColumn("partitionId", spark_partition_id()).groupBy("partitionId").count().show()
+
+
+df191 = df19.select(df19.year., df19.country, df19.sex, df19.count).repartition(5)
+print(df191.rdd.getNumPartitions())
+df191.withColumn("partitionId", spark_partition_id()).groupBy("partitionId").count().show() --- get no. of records/partition
+
+
+
+20.Input_File_Name: Identify Input File Name of Corrupt Record:
+    
+df20 = spark.read.format("csv").option("recursiveFileLookup","true").option("header", "true").load("dbfs:/FileStore/tables/")
+display(df20.withColumn("filename",input_file_name()))
+display(df20.groupBy("FILE_NAME").count())
+
+
+21.Window Functions: Lead and Lag:
+from pyspark.sql.types improt *
+from pyspark.sql.window improt Window
+
+windowspec = Window.partitionBy("Deparment").orderBy("Salary")
+df.withColumn("lag", lag("Salary", 1).over(windowspec)).show()
+
+df.withColumn("lead", lead("Salary", 1).over(windowspec)).show()
+
+
+
+22.Create_map(): Convert Dataframe Columns to Dictionary (Map Type):
+    from pyspark.sql.functions import col, lit, create_map
+
+    dfDict = df.select(col("productID"),col("productName"),col("unitPrice"),col("discPersent"), create_map(col("productName"),col("unitPrice")).alias("PriceDict"))
+
+    dfDict.display()
+
+
+    dfDict = df.withColumn("PriceDict", create_map(lit("productName"), col("productName"), lit("unitPrice"), col("unitPrice")))
+   
+    display(dfDict)
+
+
+
+23.Split Array Elements into Separate Columns:
+    
+    exp: key    value
+         100    [111,222,234]   ------Explode------------>  key  value
+                                                            100  111
+                                                            100  222
+                                                            100  234
+
+         100    [111,222,234]   ------????------------>     key  value1 value2 value3
+                                                            100  111    222    234
+
+
+   data1 = ['ABC', [1,2,3]], ['XYZ', [2,None,4]], ['KLM', [8,7]], ['IJK', [5]]
+   Schema = ["Key", "Value"]
+
+   df = spark.createDataframe(sc.parallelize([['ABC', [1,2,3]], ['XYZ', [2,None,4]], ['KLM', [8,7]], ['IJK', [5]]]), ["Key", "Value"])
+
+   df.display()
+
+     Key   value
+     ABC   [1,2,3]
+     XYZ   [2,null,4]
+     KLM   [8,7,null]
+     IJK   [5,null,null]
+
+   -----split array
+   df.select("Key", df.value[0], df.value[1], df.value[2]).display()
+
+     Key   value[0]  value[1]  value[2]
+     ABC   1         2         3
+     XYZ   2         null      4
+     KLM   8         7         null
+     IJK   5         null      null
+
+   -----Determine the size of Each Array
+   dfsize = df.select("Key", "value", size("value").alias("NoOfArrayElements"))
+   dfsize.display()
+                                                            
+  -----get the max size of all array
+
+  max_value = dfsize.agg({"NoOfArrayElements": "max"}).collect()[0][0]
+                                        
+        
+
+24.Handlining Duplicate Data: DropDuplicates vs Distinct:
+    
+
+   df.distinct().dispaly()
+   df.select("id","name").distinct().display()
+
+   df.dropDuplicates().dispaly()
+   df.select("id","name").dropDuplicates().display()
+    
+
+25.Schema Comparison:
+    ----compare schema of first and second dataframe
+    if df1.schema == df2.schema:
+        print("Schema Matches")
+    else:
+        print("Schema not Matches")
+    
+    ----compare schema of first and third dataframe
+    if df1.schema == df3.schema:
+        print("Schema Matches")
+    else:
+        print("Schema not Matches")
+
+    ----list of column missing in third dataframe
+    print(list(set(df2.columns) - set(df3.columns)))
+
+    ----list of column missing in second dataframe
+    print(list(set(df3.columns) - set(df2.columns)))
+
+
+    ----collect all possible columns in a list
+    allColumns = df1.columns+df3.columns
+    uniqueColumns = list(set(allColumns))
+    print(uniqueColumns)
+
+
+    ----add missing columns
+    for col in uniqueColumns:
+        if col not in df1.columns:
+            df1 = df1.withColumns(col, lit(None))
+        if col not in df3.columns:
+            df3 = df3.withColumns(col, lit(None))
+
+    display(df1)
+    display(df3)
+
+
+SQL:
+    
+1.Update the patients table for the allergies column.If the patient's allergies is null then replace it with 'NKA' ?
+
+update patients
+set allergies = 'NKA'
+where allergies is null;
+
+2.Show first name and last name concatinated into one column to show their full name ?
+
+select first_name||' '||last_name
+from patients;
+or,
+select concat(first_name,' ',last_name)
+from patients;
+
+3.Show how many patients have a birth_date with 2010 as the birth year ?
+
+select count(*)
+from patients
+where year(birth_date) = 2010;
+
+4.Show all columns for patients who have one of the following patient_ids; 1,45,534,879,1000
+
+select *
+from patients
+where patient_id in (1,45,534,879,1000);
+
+5.Based on cities where our patient lives in, write a query to display the list of unique city starting with a vowel (a, e, i, o, u). 
+Show the result order in ascending by city ?
+
+select distinct(city)
+from patients
+where city like 'a%'
+or city like 'e%'
+or city like 'i%'
+or city like 'o%'
+or city like 'u%'
+order by city asc;
+
+6.Show unique first names from the patients table which only occurs once in the list ?
+
+select first_name
+from patients
+group by first_name
+having count(first_name)=1;
+or,
+select first_name
+from
+    (select first_name, count(first_name) as Count_num
+     from patients
+     group by first_name)
+where Count_num=1;
+
+Note: when select column(s) then put the same column(s) with group by clouse .
+      when use Aggregate fun with select then definitely group by clouse come and after group by only we use having clouse with Aggregate Function
+      i.e Aggregate function(column) = condition
+      where clouse comes before group by only.
+
+7.Show patient_id and first_name from patients where their first_name start and ends with 's' and is at least 6 characters long ?
+
+select patient_id,first_name
+from patients
+where first_name like 's%____%s';	
+
+8.Show the total amount of male patients and the total amount of female patients in the patients table. Display the two results in the same row.
+
+select
+(select COUNT(*) from patients where gender = 'M') AS TOTAL_MALE,
+(select COUNT(*) from patients where gender = 'F') AS TOTAL_FEMALE -----------> with same row like total_male,total_female
+
+if need o/p in same Column then;
+select gender, COUNT(*) AS TOTAL_COUNT
+from patients
+group by gender; -------------------------------------------------------------> With same Column like gender,total_count
+  
+
+
+9.Show the difference between the largest weight and smallest weight for patients with the last name 'Maroni' ?
+
+select max(weight),min(weight),max(weight)-min(weight) as diff_weight
+from patients
+where last_name = 'Maroni';
+
+10.Create the table and Insert the value.
+
+CREATE TABLE cars
+( ID INT IDENTITY(1,1),
+ MODEL VARCHAR(25),
+ BRAND VARCHAR(20),
+ COLOR VARCHAR(20),
+ MAKE DATE()
+ );
+
+
+INSERT INTO  cars
+ VALUES ('model S','Tesla',Blue,2018),
+        ('EQS','Mercedes-Benz',Black,2022),
+        ('Ix','BMW',Red,2022),
+        ('loniq5','Hyundai',White,2021),
+        ('model S','Tesla',Silver,2018),
+        ('loniq5','Hyundai',Green,2021)
+        
+Table : car -->
+
+c1
+ID	MODEL	    BRAND	        COLOR 	        MAKE           
+1	model S     Tesla	        Blue	        2018
+2	EQS	        Mercedes-Benz	Black	        2022
+3	Ix	        BMW	            Red	            2022
+4	loniq5      Hyundai	        White	        2021
+5	model S     Tesla	        Silver	        2018
+6	loniq5      Hyundai	        Green	        2021
+
+c2
+ID	MODEL	    BRAND	        COLOR 	        MAKE
+1	model S     Tesla	        Blue	        2018
+2	EQS	        Mercedes-Benz	Black	        2022
+3	Ix	        BMW	            Red	            2022
+4	loniq5      Hyundai	        White	        2021
+5	model S     Tesla	        Silver	        2018
+6	loniq5      Hyundai	        Green	        2021
+
+
+32.Write a query to find and delete duplicate data from cars table ? 
+
+Soln1:using group by and count: 
+
+To see duplicates:
+select model, brand, count(*)
+from cars
+group by model, brand
+having count(*) > 1;
+
+To delete duplicates:
+delete from cars
+where ID in (
+select model, brand, count(*)
+from cars
+group by model, brand
+having count(*) > 1);
+
+
+Soln2: Using WINDOW FUNCTION
+
+To see duplicates:
+
+select*
+from (
+     select *, row_number() over (partition by model, brand ) as rn 
+     from cars) x
+where rn > 1);
+
+To delete duplicates:            
+delete from cars
+where ID in (
+             select ID
+             from (
+               select *, row_number() over (partition by model, brand ) as rn 
+               from cars) x
+               where x.rn > 1);
+
+
+Soln3: Using MIN FUNCTION . This delete even multiple duplicate records
+
+To see duplicates:
+
+select min(id) from cars
+group by model, brand;
+
+
+To delete duplicates:            
+delete from cars
+where ID in (
+            select min(id)
+            from cars
+            group by model, brand);
+
+
+Soln4: Using SELF JOIN
+
+delete from cars
+where ID in (
+            select c2.id
+            from cars c1
+            join cars c2 
+            on c1.model = c2.model and c1.brand = c2.brand
+            where c1.id < c2.id);
+
+soln5: Using DISTINCT:
+
+To delete duplicate:
+
+select distinct * from cars
+     
+***********************note>
+
+Only delete copy of duplicate records then,
+
+INSERT INTO temp_table SELECT DISTINCT *  FROM your_table;
+TRUNCATE TABLE your_table;
+INSERT INTO your_table SELECT * FROM temp_table;
+DROP TABLE temp_table;
+
+***********************note<
+
+33.What is order of execution in SQL ?
+
+FROM -> JOIN -> WHERE -> GROUP BY -> HAVING -> SELECT -> DISTINCT -> ORDER BY -> LIMIT
+
+SELECT dept_name, count(dept_name)
+FROM emp
+WHERE city='Delhi'
+GROUP BY dept_name
+HAVING count(dept_name)<5
+ORDER BY count(dept_name) desc
+LIMIT 1
+
+
+34.What is the SQL query used to create a table with same structure of another table ?
+
+CREATE TABLE department_copy as (SELECT * FROM department WHERE 1=2);
+
+35.What is the SQL query used to create a table with the same structure and Data from a another table ?
+
+CREATE TABLE department_copy as (SELECT * FROM department);
+
+36.What is the SQL query used to find the 2nd/3rd/nth highest salary ?
+
+
+Soln1: By using sub-query : ( this soln can be used atleast till 3rd )
+
+select name, salary  from employee order by salary desc;
+ 
+select max(salary) from employee
+                       where salary < (select max(salary) from employee
+                                                               where salary < (select max(salary) from employee));
+                                                               
+Soln2: By using LIMIT :
+
+SELECT salary FROM employee
+             ORDER BY salary DESC LIMIT N-1, 1
+
+for 3rd highest salary and record only 1 then n-1 = 2 and record =1
+select salary from employee
+             order by salary desc limit 2, 1 
+
+for 2rd highest salary and record only 1 then n-1 = 1 and record =1
+select salary from employee
+             order by salary desc limit 1, 1 
+
+for 4rd highest salary and record only 2 then n-1 = 3 and record =2
+select salary from employee
+             order by salary desc limit 3, 2
+
+
+Soln3: using Window function ( DENSE_RANK):
+
+In single table :->
+For 2nd highest salary:
+select* from 
+(select*, DENSE_RANK() OVER(PARITITON BY department ORDER BY salary DESC) as rn from employee) as table1
+
+where rn=2;
+
+Soln4:using CTE
+
+For 2nd highest salary: 
+with table1 as 
+(
+select*, DENSE_RANK() OVER(PARITITON BY department ORDER BY salary DESC) as rn from employee
+)
+
+select*from table1
+where rn=2;
+
+
+*In two tables, find the 2nd highest selling product( in term of revenue):->
+
+products:
+category, product
+
+sales:
+order_id, product_name, unita_sold, unit_price
+
+
+select*from
+(
+  select*, (units_sold*unit_price) as total_revenue, DENSE_RANK() OVER(PARITITON BY category ORDER BY (units_sold*unit_price) DESC) as rnk
+  from sales
+  JOIN products 
+  ON products.product=sales.product_name
+) as table1
+
+where rnk=2;
+
+2nd method using NTH_VALUE:
+
+SELECT e.first_name,
+       e.last_name,
+       d.department_name,
+       salary,
+       NTH_VALUE(salary, 3) OVER (PARTITION BY department_name ORDER BY salary DESC) AS third_highest_salary
+FROM department d
+JOIN employee e 
+ON d.id = e.department_id;
+
+
+
+37.What is the SQL query used to find all the employees, who also hold the managerial position ?
+
+select e.first_name as employName,m.first_name as managerName
+from employee e
+join employee m
+on e.emp_id = m.manager_id
+
+38.What is the SQL query used to find all managers, who has more than 5 employees working under him ?
+
+Table-> employee(empid,empname,dept,mgrid)
+
+Subquery:
+ select empname from employee where empid in
+ (select managerid from employee group by managerid having count(managerid)>5);
+
+self join:
+Or, 
+select e.empName
+from employee e
+join employee m
+on e.emp_id = m.manager_id
+group by e.empName
+having count(e.empName)>5;
+
+39.Find empid, name of employees whose salary is greater than average salary of his/her unit ?
+
+EMP ID 	NAME	DESIGNATION             UNITNAME	LOCATION	    DOJ	        SALARY
+1001	Thomson	SE	                    IVS	        Mysore	        10-Feb-99	60000
+1002	Johnson	TE	                    E&R	        Bangalore	    18-Jun-00	50000
+1003	Jackson	DM	                    IMS	        Hyderabad	    23-Apr-85	90000
+1004	Bob	    GL	    	            E&R	        Mysore	         5-Jan-04	55000
+1005	Alice	PA	                    PLES	    Chandigarh	    12-Mar-06	25000
+1006	Lily	SE	                    IVS	        Bangalore	    17-Dec-02	40000
+1007	Kirsten	PM	                    IMS	        Mysore	        17-Jan-02	45000
+
+
+with avrtable as (
+select unitname,avg(salary) as avr_sal from emptable group by unitname)
+
+select * from avrtable as avr
+join emptable emp
+on avr.unittime = emp.unittime and emp.salary > avr.avr_sal;
+
+
+40.Find all Joins
+
+TABLE1                     TABLE2
+ID                         ID
+1                          1
+1                          1
+1                          NULL
+2                          2
+3                          4
+NULL                       5
+NULL                       NULL
+
+
+for inner join: 6+1 = 7 ( 1->1,1->1,1->1,1->1,1->1,1->1,2->2 = 7 )
+for left join: 7+3 = 10
+for right join: 7+4 = 11
+for full out join: 7+3+4 = 14
+for cross join: 7*7 = 49 (Doubt check once)
+
+
+41.Write a UPDATE statement to change the GENDER value(Swap) of InpiTable ?
+ 
+Soln :1
+update InpiTable
+set gender = IIF('M','F','M')
+
+Soln :2
+update InpiTable
+set gender = 
+(case when gender
+ ='M' then 'F'
+else 'M'
+end);
+
+
+42.What is the SQL query used to display the current date ?
+
+these function returns the current date. the date is returned as "YYYY-MM-DD" (string) or as YYYYMMDD (numeric)
+
+SELECT CURRENT_DATE;
+SELECT CURRENT_DATE();
+SELECT CURRENTDATE();
+SELECT DATE(NOW());
+SELECT DATE(CUREENT_TIMESTAMP());
+
+Note : the NOW() & CUREENT_TIMESTAMP() function returns the current date and 
+       time in "YYYY-MM-DD HH:MM:SS" (string) or as YYYYMMDDHHMMSS (numeric) fomat.
+       
+       
+43.What is the SQL Query used to fetch alternate records from a table ?
+
+To fetch Even Number :
+
+SELECT *  FROM employee WHERE id%2=0;
+     
+To fetch Odd Number :
+
+SELECT *  FROM employee WHERE id%2=1;
+
+By Using ROW_Number :
+To fetch Even Number,
+
+SELECT * FROM (SELECT *,
+              ROW_Number() OVER (ORDER BY id ) as ROWNumber FROM employee ) e 
+                                                    WHERE e.ROWNumber % 2 = 0;
+To fetch Odd Number,
+
+SELECT * FROM (SELECT *,
+              ROW_Number() OVER (ORDER BY id ) as ROWNumber FROM employee ) e 
+                                                    WHERE e.ROWNumber % 2 = 1;
+                                                    
+
+44.What is the SQL Query used to fetch the common records from two table ?
+
+SELECT * FROM employee 
+         INNER JOIN emp
+         ON employee.ID = emp.ID   
+
+
+45.What is the SQL Query used to find the first/top 5 records from a table ?
+
+Using LIMIT
+SELECT * FROM  Employee LIMIT 5;
+
+ Using TOP 5
+SELECT TOP 5 * FROM  Employee ;
+              
+Using ROWNUM 
+SELECT * FROM  Employee where rownum<=5;
+        
+        
+                                                    
+46.What is the SQL Query used to find the last 5 records from a table ?
+
+(SELECT * FROM Employee ORDER BY ID DESC LIMIT 5)
+ORDER BY ID ASC;
+
+47.What is the SQL Query used to find the Maximum Salary of each Department ?
+
+select*, max(salary) as maxSalary from DepartmentTable
+group by dept;
+
+48.What is the SQL Query used to find the Department-wise count of Employees sorted By Department's Count in Ascending Order ?
+
+SELECT dept_id, COUNT(dept_id) FROM Employee
+GROUP BY dept_id
+ORDER BY COUNT(dept_id);
+
+Or,
+
+SELECT  D.name, COUNT(*) as Count FROM Employee E
+INNER JOIN Department D on E.dept_id = D.id 
+GROUP BY D.name
+ORDER BY Count;
+
+
+
+49.ALter Commands :
+-> ADD column/s 
+-> DROP column/s
+-> RENAME column/Table
+-> ADD constraints
+-> REMOVE constraints
+-> MODIFY datatype
+-> MODIFY datatype length
+
+ALTER TABLE table_name ADD (Columnname_1  datatype,Columnname_2  datatype, …Columnname_n  datatype);
+Ex ALTER TABLE Students ADD Email varchar(255);
+
+ALTER TABLE table_name DROP COLUMN column_name;
+Ex ALTER TABLE Students DROP COLUMN Email;
+
+ALTER TABLE table_name MODIFY column_name column_type;
+Ex ALTER TABLE table_name ALTER COLUMN column_name column_type;
+
+ALTER TABLE table_name RENAME COLUMN old_name TO new_name;
+
+ALTER TABLE table_name DROP CONSTRAINT column_name;
+
+Ex ALTER TABLE Persons DROP INDEX UC_Person;
+Ex ALTER TABLE Persons DROP PRIMARY KEY;
+
+
+
+50.Split Concatenated String into Columns for MySQL ?
+
+Example1:
+id	name
+1	Ann Smith
+2	Mark Twain
+3	Brad Green
+
+SELECT SUBSTRING_INDEX(name,' ',1) AS firstname, SUBSTRING_INDEX(name,' ',-1) AS lastname
+FROM Student
+
+o/p 
+firstname	lastname
+Ann	        Smith
+Mark	    Twain
+Brad	    Green
+
+The function SUBSTRING_INDEX() takes 3 arguments: the source string, the delimiter, and the occurrence count of the delimiter.
+
+Example2:
+Column 1           Column 2
+85 (Unit A)
+85 (Unit B)
+86
+87 - 89 (Unit A)
+
+For update;
+
+Column 1           Column 2
+85 (Unit A)
+85 (Unit B)
+86
+87 - 89 (Unit A)
+	
+For selection,
+SELECT  SUBSTRING_INDEX( Column 1  , '(', 1 ) AS C1,SUBSTRING_INDEX(SUBSTRING_INDEX( Column 1  , '(', 2 ),'(',-1) AS C2  from Tablename
+
+For update
+Update TableName set Column1= SUBSTRING_INDEX( table.Column1 , '(', 1 ) ,Column2= SUBSTRING_INDEX(SUBSTRING_INDEX( table.Column1 , '(', 2 ),'(',-1) ;
+
+Example3:
+table_number
+1,2,3
+3,2,1
+4,5,6
+5,5,5
+select
+substring_index(`column`,',',1) as first_value,
+substring_index(substring_index(`column`,',',2),',',-1) as second_value,
+substring_index(`column`,',',-1) as third_value
+from table_number;
+
+Example4:
+create table Employee_Address
+(
+E_ID int,
+E_NAME varchar(20),
+E_LOCATION varchar(20),
+E_ADDRESS varchar(100)
+);
+Insert the below data into the table: -
+insert into EMPLOYEE_ADDRESS values (1, 'Sam', 'MP', '12-1-26; Seoul; South korea');
+insert into EMPLOYEE_ADDRESS values (2, 'Sohan', 'Bangalore', '11-26; Busan; South korea' );
+insert into EMPLOYEE_ADDRESS values (3, 'Will', 'Tamilnadu', '91-27; Seoul; South korea' );
+insert into EMPLOYEE_ADDRESS values (4, 'Ben', 'UP', '10-34; Seoul; South korea');
+insert into EMPLOYEE_ADDRESS values (5, 'Hamington', 'UP', '126-09; Busan; South korea');
+insert into EMPLOYEE_ADDRESS values (6, 'Ji eun', 'Bangalore', '167-4; Seoul; South korea');
+insert into EMPLOYEE_ADDRESS values (7, 'Jimin', 'UP', '234-0; Busan; South korea');
+insert into EMPLOYEE_ADDRESS values (8, 'Jk', 'Bangalore', '166-0; Busan; South korea');
+insert into EMPLOYEE_ADDRESS values (9, 'V', 'AP', '12-89-26; Busan; South korea');
+insert into EMPLOYEE_ADDRESS values (10, 'Jhope', 'Bangalore', '189-1-26; Seoul; South korea');
+
+select * from EMPLOYEE_ADDRESS;
+
+E_ID  E_NAME      E_LOCATION   E_ADDRESS
+1     Sam         MP           12-1-26; Seoul; South korea
+2     Sohan       Bangalore    11-26; Busan; South korea
+3     Will        Tamilnadu    91-27; Seoul; South korea
+4     Ben         UP           10-34; Seoul; South korea
+5     Hamington   UP           126-09; Busan; South korea
+6     Ji eun      Bangalore    167-4; Seoul; South korea
+7     Jimin       UP           234-0; Busan; South korea
+8     Jk          Bangalore    166-0; Busan; South korea
+9     V           AP           12-89-26; Busan; South korea
+10    Jhope       Bangalore    189-1-26; Seoul; South korea
+
+Now,
+
+SELECT E_ID,
+E_NAME,
+E_LOCATION,
+SUBSTRING_INDEX(E_ADDRESS,';',1) AS ADDRESS1,
+/* -- nested substring declare-*/
+SUBSTRING_INDEX((SUBSTRING_INDEX(E_ADDRESS,';',2)),';',-1) AS ADDRESS2,
+/* -- nested substring declare-*/
+SUBSTRING_INDEX(E_ADDRESS,';',-1) AS ADDRESS3
+/* -- nested substring declare-*/
+FROM EMPLOYEE_ADDRESS;
+
+
+
+51.SQL Convert Rows to Columns and Columns to Rows without using Pivot Functions in MySql ?
+
+create table emp_compensation (
+emp_id int,
+salary_component_type varchar(20),
+val int
+);
+insert into emp_compensation
+values (1,'salary',10000),(1,'bonus',5000),(1,'hike_percent',10)
+, (2,'salary',15000),(2,'bonus',7000),(2,'hike_percent',8)
+, (3,'salary',12000),(3,'bonus',6000),(3,'hike_percent',7);
+
+select * from emp_compensation;
+emp_id     salary_component_type           val
+1          salary                          10000
+1          bonus                           5000
+1          hike_percent                    10
+2          salary                          15000
+2          bonus                           7000
+2          hike_percent                    8
+3          salary                          12000
+3          bonus                           6000
+3          hike_percent                    7
+                                 
+Row to Column :
+select 
+emp_id,
+sum(case when salary_component_type='salary' then val end) as Salary,
+sum(case when salary_component_type='bonus' then val end) as bonus,
+sum(case when salary_component_type='hike_percent' then val end) as hike_percent
+into emp_compensation_pivot      ----------------------------------------------------> (this required if you want save data into new table)
+from emp_compensation
+group by emp_id
+
+emp_compensation_pivot
+emp_id  salary  bonus  hike_percent
+1       10000   5000   10
+2       15000   7000   8
+3       12000   6000   7
+
+
+Column to Row :
+emp_compensation_pivot
+emp_id  salary  bonus  hike_percent
+1       10000   5000   10
+2       15000   7000   8
+3       12000   6000   7
+
+select*from(
+select emp_id, 'salary' as salary_component_type, salary as val from emp_compensation_pivot
+union all
+select emp_id, 'bonus' as salary_component_type, bonus as val from emp_compensation_pivot
+union all
+select emp_id, 'hike_percent' as salary_component_type, hike_percent as val from emp_compensation_pivot
+) a
+order by emp_id;
+
+
+o/p
+emp_id     salary_component_type           val
+1          salary                          10000
+1          bonus                           5000
+1          hike_percent                    10
+2          hike_percent                    8
+2          bonus                           7000
+2          salary                          15000
+3          salary                          12000
+3          bonus                           6000
+3          hike_percent                    7
+
+
+
+52.Find the salesmen who lives in the same city
+
+In same table ------->
+
+ salesman_id |    name    |   city   | commission 
+-------------+------------+----------+------------
+        5001 | James Hoog | New York |       0.15
+        5002 | Nail Knite | Paris    |       0.13
+        5005 | Pit Alex   | London   |       0.11
+        5006 | Mc Lyon    | Paris    |       0.14
+        5007 | Paul Adam  | Rome     |       0.13
+        5003 | Lauson Hen | San Jose |       0.12
+		
+
+SELECT s.name, c.city
+FROM salesman s, salesman c
+WHERE s.city = c.city;
+
+In two Table ------->
+
+ salesman_id |    name    |   city   | commission 
+-------------+------------+----------+------------
+        5001 | James Hoog | New York |       0.15
+        5002 | Nail Knite | Paris    |       0.13
+        5005 | Pit Alex   | London   |       0.11
+        5006 | Mc Lyon    | Paris    |       0.14
+        5007 | Paul Adam  | Rome     |       0.13
+        5003 | Lauson Hen | San Jose |       0.12
+		
+
+customer_id |   cust_name    |    city    | grade | salesman_id 
+-------------+----------------+------------+-------+-------------
+        3002 | Nick Rimando   | New York   |   100 |        5001
+        3007 | Brad Davis     | New York   |   200 |        5001
+        3005 | Graham Zusi    | California |   200 |        5002
+        3008 | Julian Green   | London     |   300 |        5002
+        3004 | Fabian Johnson | Paris      |   300 |        5006
+        3009 | Geoff Cameron  | Berlin     |   100 |        5003
+        3003 | Jozy Altidor   | Moscow     |   200 |        5007
+        3001 | Brad Guzan     | London     |       |        5005
+
+
+SELECT customer.cust_name,
+salesman.name, salesman.city
+FROM salesman, customer
+WHERE salesman.city = customer.city;
+
+
+
+53.Find the list of product which has been not sold ?
+
+product
+product_id product _name
+sales
+prod_id sales_price
+Find the list of products which have not been sold
+
+select p.product_id,p.product_name,s.sales_prices
+
+from product p
+join sales s
+
+on p.product_id = s.prod_id
+
+where s.sales_price is null
+
+
+54. Custom Sorting | Order by Month in an Year
+
+SaleTable:
+MonthName  Sales
+April      5000
+January    1000
+March      6000
+May        7000
+February   1200
+October    5000
+June       1800
+August     1500
+September  1600
+July       9000
+December   4000
+November   1000
+
+Select * form SaleTable
+Order by (case when MonthNmae = 'January' then 1
+when MonthNmae = 'February' then 2
+hen MonthNmae = 'March' then 3
+hen MonthNmae = 'April' then 4
+hen MonthNmae = 'May' then 5
+hen MonthNmae = 'June' then 6
+hen MonthNmae = 'July' then 7
+hen MonthNmae = 'August' then 8
+hen MonthNmae = 'September' then 9
+hen MonthNmae = 'October' then 10
+hen MonthNmae = 'November' then 11
+hen MonthNmae = 'December' then 12
+else NULL end);
+
+Exp:
+
+CountryName  code
+USA          U
+INDIA        I
+CHINA        C
+RUSSIA       R
+JAPAN        J
+
+
+Select * from
+Order by case when CountryName = 'INDIA' then 0
+when CountryName = 'RUSSIA' then 1
+else 2 end, CountrtyName ASC;
+
+
+
+55.Calculate number of weekdays between two dates | Exclude Weekends | DateDiff | DateName
+
+select DateName(dw,orderdate),orderdate from sale
+
+thursaday 2015-01-01
+friday    2015-01-21
+
+
+select orderdate,shipDate,Datediff(dd,orderdate,shipDate)+1 from sale
+
+
+select orderdate,shipDate,Datediff(ww,orderdate,shipDate)+1 from sale
+
+56.Find Age from Birth Date
+
+select datediff(YY, birthdate, getdate()) as Age from DimEmployee
+
+select datediff(YY, birthdate, getdate()) as Age from DimEmployee
+where Month(birthdate)=12
+
+
+57.How to check for Alphanumeric values | Like | Wildcards
+
+select distinct ModelName from DimProduct
+where ModelName is NOT NULL AND
+ModelName like '%[a-z0-9]%'
+
+
+If keep any other charactor along with a-z0-9 like space,comma,-,@ etc
+then,
+
+select distinct ModelName from DimProduct
+where ModelName is NOT NULL AND
+ModelName like '%[^a-z0-9]%'
+
+if want value other than '%[^a-z0-9]%' then 
+
+select distinct ModelName from DimProduct
+where ModelName is NOT NULL AND
+ModelName not like '%[^a-z0-9]%'
+
+Output:
+
+Chain
+M8V3X9
+Minipump
+Tallnight
+
+
+
+58.Remove leading and trailing zeroes from a decimal
+
+Amount
+10.0000
+10.0200
+10.2222
+1.0200
+
+  select Amount, cast(Amount as float) as Amount1 from sale
+
+Amount   Amount1
+10.0000  10
+10.0200  10.02
+10.2222  10.2222
+1.0200   1.02
+
+
+59.How to Extract Numbers and Alphabets from an alphanumeric string | Translate function
+
+Employee
+7369SMITH
+7499ALLEN
+7654MARTIN
+
+for numeric extract:
+select Employee
+, trim(translate(Employee,'0123456789','         ')) as EmpName
+
+from employeetable
+
+EmpName
+SMITH
+ALLEN
+MARTIN
+
+for alphabatic extract:
+
+
+select Employee
+, trim(translate(Employee, translate(Employee,'0123456789','         '), space(len(translate(Employee,'0123456789','         '))))) as EmpID
+
+from employeetable
+
+7369
+7499
+7654
+
+
+60. Find employees with salary less than Dept average but more than average of any other Dept | ANY
+
+61.How to find employees with highest salary in a department
+
+62.Find employees with salary greater than department average / and less than company average
+
+63.How to find employees with salary greater than their manager's salary
+
+select empid, firstname, lastname, deptname, salary from emp as dept
+where salary > (select salary from emp where empid = mngid)
+
+
+64.How to increment salaries of employees who have 2 years with the organization | Datediff
+
+select empid, firstname, lastname, deptname, salary from emp as dept
+where datediff(year,hiredate,'2020-12-31')>2
+
+increament salary:
+
+select empid, firstname, lastname, deptname, salary, salary*1.15 as incsalary from emp as dept
+where datediff(year,hiredate,'2020-12-31')>2
+
+
+65.How to find employees hired in last n months | Datediff
+
+select* from empdetails
+
+where datediff(month, Hiredate, Getdate()) <=3
+
+
+66.How to capitalize first letter of a string
+
+
+
+
+select upper(left(firstname,1)) + substring(firstname,2,len(fistname)
+from empdetails
+
+Firstname
+alice
+paula
+kendal
+
+output
+firstname
+Alice
+Paula
+Kendal
+
+
+67.How to find employees retiring at the end of the month | DATEADD | EOMONTH
+
+emptable
+
+firstanme,lastname,birthdate
+
+select firstname,lastname,birthdate, dateadd(year,60,birthdate) from emptable
+
+where dateadd(year,60,birthdate)<=eomonth(getdate())
+
+
+68.Count the occurrence of a character in a string
+
+chartable
+surveyid, response
+1         YYNNXYXNNNXXYXNXXYYYYXXXNNN
+2         XXXNNNYYYYNYNYNYXYXYN
+
+
+select surveyed, response, len(response), replace(response,'Y', ''),
+        len(replace(response,'Y', '')) from chartable
+
+surveyid, response                        
+1         YYNNXYXNNNXXYXNXXYYYYXXXNNN   27  NNXXNNNXXXNXXXXXNNN   19
+2         XXXNNNYYYYNYNYNYXYXYN         21  XXXNNNNYNYNXXN        12
+
+
+So.
+select surveyed, response, len(response)-len(replace(response,'Y', '')) from chartable
+
+
+chartable
+surveyid, response
+1         YYNNXYXNNNXXYXNXXYYYYXXXNNN  8
+2         XXXNNNYYYYNYNYNYXYXYN        9
+
+
+69.Find names that start/end with 'a' | More examples | Like | Pattern Matching
+
+select firatname fro emp
+where firstname like '[^A-D]%'
+
+or,
+
+select firatname fro emp
+where firstname like '__-%'
+
+or,
+
+for 20% in name:
+
+select firatname fro emp
+where firstname like '%20[%]%'
+
+
+70.How to find departments having only male / female employees?
+
+EMPLOYEE: ID, Gender, Salary, DEPT_ID
+
+SELECT males, dno FROM
+(SELECT COUNT(Gender = 'male') AS males, COUNT(Gender = 'female') AS females, DEPT_ID
+FROM EMPLOYEE
+GROUP BY Dno)
+WHERE females = 0;
+
+
+71.How to find strings with lower case characters | Case Insensitive | Collate
+
+currencycode
+DKK
+KMD
+CDE
+LTRE
+emp
+SKN
+ejg
+
+select upper(currencycode), currencycode from dimcurrency
+ where upper(currencycode)!=currencycode
+
+output
+emp
+ejg
+
+
+72. How to find number of emails from the same domain | CharIndex
+
+select charindex('@',email), email from customer
+
+So, 
+select count(*), right(email, len(email)-charindex('@',email)) from customer
+group by right(email, len(email) - charindex('@',email))
+
+
+73.whaqt is difference between translate() and replace() in SQL
+
+
+74. How many times a substring occurs in a value ? | REPLACE | LEN
+
+'yes,no,yes,no,yes'
+
+declare @string as varchar(50) = 'yes,no,yes,no,yes'
+declare @rep as varchar(50) = 'yes'
+
+select len(@string), len(@rep), len(replace(@string,'@rep', '')),
+ 
+len(@string)-len(replace(@string,@rep, '')), (len(@string)-len(replace(@string,'@rep', '')))/len(@rep)
+
+
+output: 3
+
+74.How to replace multiple commas with a single comma
+
+SELECT 'a,,,,b,,,c,,,,,,' AS c
+
+INTO tab
+UNION SELECT 'd,e,,,f,,,,,,g,,'AS c
+
+SELECT c,
+  REPLACE(REPLACE(REPLACE(c, ',,', ','),',,', ','),',,', ',') AS result from tab
+
+C                       result
+a,,,,b,,,c,,,,,,	a,b,c,
+d,e,,,f,,,,,,g,,	d,e,f,g,
+
+
+75.How to extract numbers from String | Split word into characters | Two methods
+
+declare @string varchar(max) = '22Novem20ber@2022'
+
+
+76.How to sort alphanumeric data | alphabets and numbers in correct order | PATINDEX
+
+77.How to update part of a string | UPDATE
+
+update emp
+set email = replace(email,'demo.com'.'demo1.com')
+
+
+78.How to insert line breaks in data | Carriage return | Line feed
+
+79.difference between CharIndex or PatIndex
+
+80.Difference between Cross Apply and Inner Join
+
+81.NOT IN Vs NOT EXISTS (Which one to use?)
+
+82.Retrieve unique records without using DISTINCT keyword
+
+select *from test
+union
+select *from test
+
+81.Source and Target Mismatch with comments | SQL
+
+source 
+id name
+1  P
+2  Q
+3  R
+4  S
+5  H
+
+target
+id name
+1  P
+2  Q
+3  R
+4  T
+7  A
+8  B
+
+output
+id comment
+4  Missmatch
+5  New in Source
+7  New in Target
+8  New in Target
+
+select
+ISNUL(s.id,t.id) as id. case when s.name<>t.name then 'missmatch'
+when s.id is null then 'New in Target'
+when t.id is null then 'New in source'
+from source s
+full join target t
+on s.id=t.id
+where isnull(s.name,'')<>isnull(t.name,'')
+
+82.How to Handle Null Values? 
+
+83.How to find the average marks of each student separated by comma
+name    marks
+alice   85,90,80,76
+bob     70,45,56
+Charlie 89,67,34,30
+
+select name, marks, avg(conver(int,value) as avrmarks from score a
+cross apply  string_split(marks,',') b
+group by name,marks
+
+
+84.SQL Comma separated string total count
+
+SubscriberId NewsletterIdCsv 
+------------ --------------- 
+1     48,51,94     
+2     43,22
+3     33,11
+4     90,61 
+
+SELECT newsletteridcsv, len(newsletteridcsv) - len(replace(newsletteridcsv, ',', '')) +1 IndividualCount
+FROM DBTABLE
+
+85. select countif(age<50 and city='london') from table1
+
+
+PYTHON:
+
+List:
+1.Python program to interchange first and last elements in a list
+
+# Swap function
+def swapList(newList):
+    
+   newList[0], newList[-1] = newList[-1], newList[0]
+
+     return newList
+    
+# Driver code
+newList = [12, 35, 9, 56, 24]
+print(swapList(newList))
+
+Output - [24, 35, 9, 56, 12]
+
+
+2.Python program to swap two elements in a list
+
+def swapPositions(list, pos1, pos2):
+	
+	list[pos1], list[pos2] = list[pos2], list[pos1]
+	return list
+
+# Driver function
+List = [23, 65, 19, 90]
+pos1, pos2 = 1, 3
+
+print(swapPositions(List, pos1, pos2))
+
+Output: [19, 90, 23, 65]
+
+
+3.Python – Swap elements in String list
+
+# Initializing list
+test_list = ['Gfg', 'is', 'best', 'for', 'Geeks']
+
+# Swap elements in String list
+# using replace() + list comprehension
+res = [sub.replace('G', '-').replace('e', 'G').replace('-', 'e') for sub in test_list]
+
+# printing result 
+print ("List after performing character swaps : " + str(res))
+
+2nd method
+test_list = ['Gfg', 'is', 'best', 'for', 'Geeks']
+lis=[]
+for i in test_list:
+      y=i.replace('G', 'e').replace('f','n')
+      lis.append(y)
+print(lis)
+
+['eng', 'is', 'best', 'nor', 'eeeks']
+
+
+4.Python | Ways to find length of list
+
+# Python len()
+li = [10, 20, 30]
+n = len(li)
+print("The length of list is: ", n)
+
+5.Maximum of two numbers in Python
+
+a = 2
+b = 4
+
+maximum = max(a, b)
+print(maximum)
+
+Method2
+def maximum(a, b):
+    
+    if a >= b:
+        return a
+    else:
+        return b
+    
+# Driver code
+a = 2
+b = 4
+print(maximum(a, b))
+
+
+6.Minimum of two numbers in Python
+
+a = 2
+b = 4
+
+minimum = min(a, b)
+print(minimum)
+
+
+Method2
+def minimum(a, b):
+	
+	if a <= b:
+		return a
+	else:
+		return b
+	
+# Driver code
+a = 2
+b = 4
+print(minimum(a, b))
+
+7.Python | Ways to check if element exists in list
+
+lst=[ 1, 6, 3, 5, 3, 4 ] 
+#checking if element 7 is present
+# in the given list or not
+i=7 
+# if element present then return
+# exist otherwise not exist
+if i in lst: 
+    print("exist") 
+else: 
+    print("not exist")
+
+2nd method
+# Initializing list
+test_list = [1, 6, 3, 5, 3, 4]
+
+# Checking if 4 exists in list
+for i in test_list:
+    if(i == 4):
+        print("Element Exists")
+
+
+8.Different ways to clear a list in Python
+
+GEEK = [6, 0, 4, 1]
+print('GEEK before clear:', GEEK)
+
+# Clearing list
+GEEK.clear()
+print('GEEK after clear:', GEEK)
+
+2nd method
+# Initializing lists
+list1 = [1, 2, 3]
+
+# Printing list2 before deleting
+print("List1 before clearing is : "
+      + str(list1))
+
+list1*=0
+# Printing list2 after reinitialization
+print("List1 after clearing using *=0 : "
+      + str(list1))
+
+3rd method
+list1 = [1, 2, 3]
+
+del list1[:]
+print("List1 after clearing using del : " + str(list1))
+
+4th method
+list1 = [1, 2, 3]
+y=list1[:0]
+print(y)
+
+9.Python | Reversing a List
+
+# Reversing a list using slicing technique
+def Reverse(lst):
+   new_lst = lst[::-1]
+   return new_lst
+
+lst = [10, 11, 12, 13, 14, 15]
+print(Reverse(lst))
+
+2nd method
+lst = [10, 11, 12, 13, 14, 15]
+lst.reverse()
+print("Using reverse() ", lst)
+
+print("Using reversed() ", list(reversed(lst)))
+
+Using reverse()  [15, 14, 13, 12, 11, 10]
+Using reversed()  [10, 11, 12, 13, 14, 15]
+
+10.Python | Cloning or Copying a list
+
+# Python program to copy or clone a list
+# Using the Slice Operator
+def Cloning(li1):
+	li_copy = li1[:]
+	return li_copy
+
+
+# Driver Code
+li1 = [4, 8, 2, 10, 15, 18]
+li2 = Cloning(li1)
+print("Original List:", li1)
+print("After Cloning:", li2)
+
+2nd method
+# Python code to clone or copy a list
+# Using the in-built function extend()
+
+
+def Cloning(li1):
+	li_copy = []
+	li_copy.extend(li1)
+	return li_copy
+
+
+# Driver Code
+li1 = [4, 8, 2, 10, 15, 18]
+li2 = Cloning(li1)
+print("Original List:", li1)
+print("After Cloning:", li2)
+
+3rd method 
+# importing copy module
+import copy
+
+# initializing list 1 
+li1 = [1, 2, [3,5], 4]
+
+# using copy for shallow copy 
+li2 = copy.copy(li1)
+
+print(li2)
+
+# using deepcopy for deepcopy
+li3 = copy.deepcopy(li1) 
+print(li3)
+
+11.Python | Count occurrences of an element in a list
+
+1st method
+def countX(lst, x):
+	count = 0
+	for ele in lst:
+		if (ele == x):
+			count = count + 1
+	return count
+
+
+# Driver Code
+lst = [8, 6, 8, 10, 8, 20, 10, 8, 8]
+x = 8
+print('{} has occurred {} times'.format(x,
+										countX(lst, x)))
+
+2th method
+lst = [8, 6, 8, 10, 8, 20, 10, 8, 8]
+x = 8
+
+count = 0
+ex=[]
+for i in lst:
+    if (i==8):
+        count+=1
+print(count)
+
+3nd method
+def countX(lst, x):
+	return lst.count(x)
+
+
+# Driver Code
+lst = [8, 6, 8, 10, 8, 20, 10, 8, 8]
+x = 8
+print('{} has occurred {} times'.format(x, 
+										countX(lst, x)))
+Output
+8 has occurred 5 times
+
+
+4rd method
+lst = [8, 6, 8, 10, 8, 20, 10, 8, 8]
+x=eval(input("put: "))
+
+count_x = lst.count(x)
+print(count_x)
+
+
+
+12.Python Program to find sum and average of List in Python
+
+L = [4, 5, 1, 2, 9, 7, 10, 8]
+
+count = 0
+
+for i in L:
+	count += i
+
+avg = count/len(L)
+
+print("sum = ", count)
+print("average = ", avg)
+
+
+2nd method
+L = [4, 5, 1, 2, 9, 7, 10, 8]
+
+count = sum(L)
+
+avg = count/len(L)
+
+print("sum = ", count)
+print("average = ", avg)
+
+
+13.Python | Sum of number digits in List
+
+# Initializing list
+test_list = [12, 67, 98, 34]
+
+for ele in test_list:
+    sum = 0
+    for digit in str(ele):
+        sum += int(digit)
+    res.append(sum)
+    
+# printing result 
+print ("List Integer Summation : " + str(res))
+
+Output: [3, 13, 17, 7]
+
+#If multiply :
+lst = [12, 67, 98, 34]
+lst1=[]
+
+for i in lst:
+    mul=1
+    for j in str(i):
+        mul*=int(j)
+    lst1.append(mul)
+print(lst1)
+
+
+14.Python | Multiply all numbers in the list
+
+def multiplyList(myList):
+
+    # Multiply elements one by one
+    result = 1
+    for x in myList:
+        result = result * x
+    return result
+
+
+# Driver code
+list1 = [1, 2, 3]
+list2 = [3, 2, 4]
+print(multiplyList(list1))
+print(multiplyList(list2))
+
+6
+24
+
+2nd method
+# Python3 program to multiply all values in the
+# list using lambda function and reduce()
+from functools import reduce
+list1 = [1, 2, 3]
+list2 = [3, 2, 4]
+
+result1 = reduce((lambda x, y: x * y), list1)
+result2 = reduce((lambda x, y: x * y), list2)
+print(result1)
+print(result2)
+
+
+15.Python program to find smallest number in a list
+
+# list of numbers
+list1 = [10, 20, 4, 45, 99]
+
+# sorting the list
+list1.sort()
+
+# printing the first element
+print("Smallest element is:", list1[0])
+
+2nd method
+# list of numbers
+list1 = [10, 20, 4, 45, 99]
+
+# sorting the list
+list1.sort(reverse=True)
+
+# printing the first element
+print("Smallest element is:", list1[-1])
+
+3rd method
+# list of numbers
+list1 = [10, 20, 1, 45, 99]
+
+
+# printing the minimum element
+print("Smallest element is:", min(list1))
+
+
+16.Python program to find largest number in a list
+
+# list of numbers
+list1 = [10, 20, 4, 45, 99]
+
+# sorting the list
+list1.sort()
+
+# printing the first element
+print("Smallest element is:", list1[-1])
+
+2rd method
+# list of numbers
+list1 = [10, 20, 1, 45, 99]
+
+
+# printing the minimum element
+print("Smallest element is:", max(list1))
+
+
+17.Python program to find second largest number in a list
+
+# List of numbers
+list1 = [10, 20, 20, 4, 45, 45, 45, 99, 99]
+
+# Removing duplicates from the list
+list2 = list(set(list1))
+
+# Sorting the list
+list2.sort()
+
+# Printing the second last element
+print("Second largest element is:", list2[-2])
+
+Second largest element is: 45
+
+18.Python program to print even numbers in a list
+
+# list of numbers
+list1 = [10, 21, 4, 45, 66, 93]
+
+# iterating each number in list
+for num in list1:
+
+    # checking condition
+    if num % 2 == 0:
+        print(num, end=" ")
+
+
+19.Python program to print odd numbers in a List
+
+# list of numbers
+list1 = [10, 21, 4, 45, 66, 93]
+
+# iterating each number in list
+for num in list1:
+
+    # checking condition
+    if num % 2 != 0:
+       print(num, end=" ")
+
+2nd method
+# Python program to print odd Numbers in a List
+
+# list of numbers
+list1 = [10, 21, 4, 45, 66, 93]
+
+only_odd = [num for num in list1 if num % 2 == 1]
+
+print(only_odd)
+
+20.Python program to print all even numbers in a range
+
+for even_numbers in range(4,15,2):
+	print(even_numbers,end=' ')
+	
+2nd method
+# Python program to print Even Numbers in given range
+
+start = int(input("Enter the start of range: "))
+end = int(input("Enter the end of range: "))
+
+# iterating each number in list
+for num in range(start, end + 1):
+
+	# checking condition
+	if num % 2 == 0:
+		print(num, end=" ")
+
+
+21.Python program to print all odd numbers in a range
+
+# Python program to print odd Numbers in given range
+
+start, end = 4, 19
+
+# iterating each number in list
+for num in range(start, end + 1):
+    
+    # checking condition
+    if num % 2 != 0:
+        print(num, end = " ")
+
+
+22.Python program to count Even and Odd numbers in a List
+
+# list of numbers
+list1 = [10, 21, 4, 45, 66, 93, 1]
+
+even_count, odd_count = 0, 0
+
+# iterating each number in list
+for num in list1:
+
+	# checking condition
+	if num % 2 == 0:
+		even_count += 1
+
+	else:
+		odd_count += 1
+
+print("Even numbers in the list: ", even_count)
+print("Odd numbers in the list: ", odd_count)
+
+
+23.Python program to print positive numbers in a list
+
+
+# list of numbers
+list1 = [-10, -21, -4, 45, -66, 93]
+
+# using list comprehension
+pos_nos = [num for num in list1 if num >= 0]
+
+print("Positive numbers in the list: ", *pos_nos)
+
+
+24.Python program to print negative numbers in a list
+
+
+# list of numbers
+list1 = [11, -21, 0, 45, 66, -93]
+
+# iterating each number in list
+for num in list1:
+
+	# checking condition
+	if num < 0:
+	print(num, end=" ")
+
+
+25.Python program to print all positive numbers in a range
+
+start, end = -4, 19
+
+# iterating each number in list 
+for num in range(start, end + 1): 
+
+	# checking condition 
+	if num >= 0: 
+		print(num, end=" ") 
+
+26.Python program to print all negative numbers in a range
+
+start, end = -4, 19
+
+# iterating each number in list
+for num in range(start, end + 1):
+	
+	# checking condition
+	if num < 0:
+		print(num, end = " ")
+
+27.Python program to count positive and negative numbers in a list
+
+# list of numbers
+list1 = [10, -21, 4, -45, 66, -93, 1]
+
+pos_count, neg_count = 0, 0
+
+# iterating each number in list
+for num in list1:
+
+	# checking condition
+	if num >= 0:
+		pos_count += 1
+
+	else:
+		neg_count += 1
+
+print("Positive numbers in the list: ", pos_count)
+print("Negative numbers in the list: ", neg_count)
+
+
+28.Remove multiple elements from a list in Python
+
+odd remove
+# creating a list
+list1 = [11, 5, 17, 18, 23, 50] 
+
+# Iterate each element in list
+# and add them in variable total
+for ele in list1:
+	if ele % 2 == 0:
+		list1.remove(ele)
+
+# printing modified list
+print("New list after removing all even numbers: ", list1)
+
+even remove
+# creating a list
+list1 = [11, 5, 17, 18, 23, 50] 
+
+# will create a new list, 
+# excluding all even numbers
+list1 = [ elem for elem in list1 if elem % 2 != 0]
+
+print(*list1)
+
+slice remove
+# creating a list
+list1 = [11, 5, 17, 18, 23, 50] 
+
+# removes elements from index 1 to 4
+# i.e. 5, 17, 18, 23 will be deleted
+del list1[1:5]
+
+print(*list1)
+
+unwanted remove
+# creating a list
+list1 = [11, 5, 17, 18, 23, 50] 
+
+# items to be removed
+unwanted_num = {11, 5}
+
+list1 = [ele for ele in list1 if ele not in unwanted_num]
+
+# printing modified list
+print("New list after removing unwanted numbers: ", list1)
+
+index REMOVE
+# Python program to remove multiple
+# elements from a list 
+
+# creating a list
+list1 = [11, 5, 17, 18, 23, 50] 
+
+# given index of elements 
+# removes 11, 18, 23
+unwanted = [0, 3, 4]
+
+for ele in sorted(unwanted, reverse = True): 
+	del list1[ele]
+
+# printing modified list
+print (*list1)
+
+
+29.Python | Remove empty tuples from a list
+
+def Remove(tuples):
+	for i in tuples:
+		if(i==()):
+			tuples.remove(i)
+	return tuples
+# Driver Code
+tuples = [(), ('ram','15','8'), (), ('laxman', 'sita'),
+		('krishna', 'akbar', '45'), ('',''),()]
+print(Remove(tuples))
+
+
+Output: [('ram', '15', '8'), ('laxman', 'sita'), ('krishna', 'akbar', '45'), ('', '')]
+
+30.Python | Program to print duplicates from a list of integers
+
+# a list of integers
+lis = [1, 2, 1, 2, 3, 4, 5, 1, 1, 2, 5, 6, 7, 8, 9, 9]
+
+uniqueList = []
+duplicateList = []
+
+for i in lis:
+	if i not in uniqueList:
+		uniqueList.append(i)
+	elif i not in duplicateList:
+		duplicateList.append(i)
+
+print(duplicateList)
+
+
+31.Python Program to count unique values inside a list
+
+# taking an input list
+input_list = [1, 2, 2, 5, 8, 4, 4, 8]
+
+# taking an input list
+l1 = []
+
+# taking an counter
+count = 0
+
+# traversing the array
+for item in input_list:
+	if item not in l1:
+		count += 1
+		l1.append(item)
+
+# printing the output
+print("No of unique items are:", count)
+
+No of unique items are: 5
+
+32.Python – List product excluding duplicates
+
+test_list = [1, 3, 5, 6, 3, 5, 6, 1]
+print("The original list is : " + str(test_list))
+
+# using naive method
+# Duplication Removal List Product
+x = list(set(test_list))
+prod = 1
+for i in x:
+	prod *= i
+
+# printing list after removal
+print("Duplication removal list product : " + str(prod))
+
+The original list is : [1, 3, 5, 6, 3, 5, 6, 1]
+Duplication removal list product : 90
+
+33.Python program to check if the list contains three consecutive common numbers in Python
+
+# creating the array
+arr = [4, 5, 5, 5, 3, 8]
+
+# size of the list
+size = len(arr)
+
+# looping till length - 1
+for i in range(size - 1):
+
+	# checking the conditions
+	if arr[i] == arr[i + 1] and arr[i + 1] == arr[i + 2]:   # or if arr[i] == arr[i + 1]  == arr[i + 2]:
+
+		# printing the element as the 
+		# conditions are satisfied 
+		print(arr[i])
+		
+
+
+
+STRING:----------------------------------------------------------------------->
+
+1.Python program to check whether the string is Symmetrical or Palindrome
+
+string = 'madam'
+
+length = len(string)
+half = length // 2
+
+first_str = string[:half]
+second_str = string[half + length % 2:]
+
+# symmetric
+if first_str == second_str:
+    print(string, 'string is symmetrical')
+else:
+    print(string, 'string is not symmetrical')
+
+# palindrome
+if first_str == second_str[::-1]:  # ''.join(reversed(second_str)) [slower]
+    print(string, 'string is palindrome')
+else:
+    print(string, 'string is not palindrome')
+
+
+2.Reverse Words in a Given String in Python
+
+string = "geeks quiz practice code"
+# reversing words in a given string
+s = string.split()[::-1]
+l = []
+for i in s:
+	# appending reversed words to l
+	l.append(i)
+# printing reverse words
+print(" ".join(l))
+
+Output: code practice quiz geeks
+
+3.Ways to remove i’th character from string in Python
+
+# Initializing String
+test_str = "GeeksForGeeks"
+
+# Removing char at pos 3
+# using replace
+new_str = test_str.replace('e', '')
+
+# Printing string after removal
+# removes all occurrences of 'e'
+print("The string after removal of i'th character( doesn't work) : " + new_str)
+
+# Removing 1st occurrence of s, i.e 5th pos.
+# if we wish to remove it.
+new_str = test_str.replace('s', '', 1)
+
+# Printing string after removal
+# removes first occurrences of s
+print("The string after removal of i'th character(works) : " + new_str)
+
+
+4.Find length of a string in python
+
+str = "geeks"
+print(len(str))
+
+2nd method
+def findLen(str):
+	counter = 0
+	for i in str:
+		counter += 1
+	return counter
+
+
+str = "geeks"
+print(findLen(str))
+
+5.Python – Avoid Spaces in string length
+
+# initializing string
+test_str = 'geeksforgeeks 33 is best'
+
+# printing original string
+print("The original string is : " + str(test_str))
+
+test_str=test_str.replace(' ','')
+res=len(test_str) 
+# printing result
+print("The Characters Frequency avoiding spaces : " + str(res))
+
+The original string is : geeksforgeeks 33 is best
+The Characters Frequency avoiding spaces : 21
+
+
+6.Python program to print even length words in a string
+
+#input string 
+n="This is a python language"
+#splitting the words in a given string
+s=n.split(" ") 
+for i in s: 
+#checking the length of words
+if len(i)%2==0: 
+	print(i)
+
+# this code is contributed by gangarajula laxmi
+
+output:
+This
+is
+python
+language
+
+7.Python – Uppercase Half String
+
+# initializing string
+test_str = 'geeksforgeeks'
+
+# computing half index
+hlf_idx = len(test_str) // 2
+
+res = test_str[:hlf_idx] + test_str[hlf_idx:].upper()
+
+# printing result
+print("The resultant string : " + str(res))
+
+
+The original string is : geeksforgeeks
+The resultant string : geeksfORGEEKS
+
+
+8.Python program to capitalize the first and last character of each word in a string
+
+s = "welcome to geeksforgeeks"
+print("String before:", s)
+a = s.split()
+res = []
+for i in a:
+	x = i[0].upper()+i[1:-1]+i[-1].upper()
+	res.append(x)
+res = " ".join(res)
+print("String after:", res)
+
+Output
+String before: welcome to geeksforgeeks
+String after: WelcomE TO GeeksforgeekS
+
+9.Python program to check if a string has at least one letter and one number
+
+def checkString(str):
+
+	# initializing flag variable
+	flag_l = False
+	flag_n = False
+
+	# checking for letter and numbers in
+	# given string
+	for i in str:
+
+		# if string has letter
+		if i.isalpha():
+			flag_l = True
+
+		# if string has number
+		if i.isdigit():
+			flag_n = True
+
+	# returning and of flag
+	# for checking required condition
+	return flag_l and flag_n
+
+
+# driver code
+print(checkString('thishasboth29'))
+print(checkString('geeksforgeeks'))
+
+2nd method
+def checkString(str):
+
+	# initializing flag variable
+	flag_l = False
+	flag_n = False
+	
+	# checking for letter and numbers in
+	# given string
+	for i in str:
+	
+		# if string has letter
+		if i in "abcdefghijklmnopqrstuvwxyz":
+			flag_l = True
+
+		# if string has number
+		if i in "0123456789":
+			flag_n = True
+	
+	# returning and of flag
+	# for checking required condition
+	return flag_l and flag_n
+
+
+# driver code
+print(checkString('thishasboth29'))
+print(checkString('geeksforgeeks'))
+
+
+Output
+True
+False
+
+10.Python Program to Accept the Strings Which Contains all Vowels
+
+11.Python | Count the Number of matching characters in a pair of string
+
+12.Python program to count number of vowels using sets in given string
+
+# Function to count vowel
+def vowel_count(str):
+
+	count = 0
+	
+	# Creating a set of vowels
+	vowel = set("aeiouAEIOU")
+	
+	# Loop to traverse the alphabet
+	# in the given string
+	for alphabet in str:
+	
+		# If alphabet is present
+		# in set vowel
+		if alphabet in vowel:
+			count = count + 1
+	
+	print("No. of vowels :", count)
+	
+# Driver code
+str = "GeeksforGeeks"
+
+# Function Call
+vowel_count(str)
+
+No. of vowels : 5
+
+
+13.Remove All Duplicates from a Given String in Python
+
+def removeDuplicate(str):
+    s = set(str)
+    s = "".join(s)
+    print("Without Order:", s)
+    
+    t = ""
+    for i in str:
+        if i in t:
+            pass
+        else:
+            t = t + i
+            
+    print("With Order:", t)
+
+str = "geeksforgeeks"
+removeDuplicate(str)
+
+
+Output
+Without Order: soerkgf
+With Order: geksfor
+
+
+14.Python – Least Frequent Character in String
+
+This is a simple and naive method. Here is the algorithm.
+
+Create an empty dictionary.
+Use a for loop to iterate through all the characters in the string.
+If the character already exists in the dictionary, increment its value by 1. 
+Otherwise, initialize its value with 1. Note that the keys for the dictionary are the characters of the given string.
+ The obtained dictionary contains values of different characters in the key-value pairs. Find the key with minimum value.
+Typecast it to string and print it.
+
+# initializing string 
+test_str = "GeeksforGeeks"
+
+all_freq = {}
+for i in test_str:
+  if i in all_freq:
+    all_freq[i] += 1
+  else:
+    all_freq[i] = 1
+    res = min(all_freq, key = all_freq.get) 
+
+# printing result 
+print ("The minimum of all characters in GeeksforGeeks is : " + str(res))
+
+
+Output : 
+The original string is : GeeksforGeeks
+The minimum of all characters in GeeksforGeeks is : f
+
+
+15.Python | Maximum frequency character in String
+
+# initializing string 
+test_str = "GeeksforGeeks"
+
+# printing original string
+print ("The original string is : " + test_str)
+
+# using naive method to get
+# Maximum frequency character in String
+all_freq = {}
+ for i in test_str:
+   if i in all_freq:
+     all_freq[i] += 1
+   else:
+     all_freq[i] = 1
+res = max(all_freq, key = all_freq.get) 
+
+# printing result 
+print ("The maximum of all characters in GeeksforGeeks is : " + str(res))
+
+Output : 
+The original string is : GeeksforGeeks
+The maximum of all characters in GeeksforGeeks is : e
+
+
+16.Python – Odd Frequency Characters
+
+# initializing string
+test_str = 'geekforgeeks is best for geeks'
+
+# printing original string
+print("The original string is : " + str(test_str))
+
+# Odd Frequency Characters
+x=set(test_str)
+res=[]
+for i in x:
+	if(test_str.count(i)%2!=0):
+		res.append(i)
+# printing result
+print("The Odd Frequency Characters are : " + str(res))
+
+Output
+The original string is : geekforgeeks is best for geeks
+The Odd Frequency Characters are : ['k', 'e', 'i', 't', 'g', 'b']
+
+
+17.Python – Specific Characters Frequency in String List
+
+# initializing lists
+test_list = ["geeksforgeeks is best for geeks"]
+
+# char list
+chr_list = ['e', 'b', 'g']
+
+# initializing dictionary for result
+res = {}
+
+# loop through each character in the test_list and count their frequency
+for char in "".join(test_list):
+	if char in chr_list:
+		if char in res:
+			res[char] += 1
+		else:
+			res[char] = 1
+			
+# printing result
+print("Specific Characters Frequencies : " + str(res))
+
+Output
+The original list : ['geeksforgeeks is best for geeks']
+Specific Characters Frequencies : {'g': 3, 'e': 7, 'b': 1}
+
+
+18.Python | Frequency of numbers in String
+
+# initializing string
+test_str = "geeks4feeks is No. 1 4 geeks"
+
+# printing original string
+print("The original string is : " + test_str)
+
+# Frequency of numbers in String
+res=0
+for i in test_str:
+	if(i.isdigit()):
+		res+=1
+# printing result
+print("Count of numerics in string : " + str(res))
+
+Output
+The original string is : geeks4feeks is No. 1 4 geeks
+Count of numerics in string : 3
+
+
+2nd method
+# initializing string
+test_str = "geeks4feeks is No. 1 4 geeks"
+
+# printing original string
+print("The original string is : " + test_str)
+
+# Frequency of numbers in String
+res=0
+digits="0123456789"
+for i in test_str:
+	if(i in digits):
+		res+=1
+# printing result
+print("Count of numerics in string : " + str(res))
+
+
+19.Program to check if a string contains any special character
+
+# input string
+n = "Geeks$For$Geeks"
+n.split()
+c = 0
+s = '[@_!#$%^&*()<>?/\|}{~:]'  # special character set
+for i in range(len(n)):
+    # checking if any special character is present in given string or not
+    if n[i] in s:
+        c += 1   # if special character found then add 1 to the c
+
+# if c value is greater than 0 then print no
+# means special character is found in string
+if c:
+    print("string is not accepted")
+else:
+    print("string accepted")
+
+
+Output
+string is not accepted
+
+
+20.Python program for removing i-th character from a string
+
+def remove(string, i): 
+return "".join() 
+
+print(remove("geeksforgeeks",2)) 
+
+Output
+geksforgeeks
+
+
+21.Python | Check if a given string is binary string or not
+
+def check(string) :
+    b = set(string)
+    s = {'0', '1'}
+    if s == b or b == {'0'} or b == {'1'}:
+        print("Binary String")
+    else :
+        print("Non Binary String")
+  
+s1= "00110101"
+# function calling
+check(s1)
+s2 = "1010100200111"
+check(s2)
+
+Output:
+Binary String
+Non Binary String
+
+22.Python | Swap commas and dots in a String
+
+def Replace(str1):
+	str1 = str1.replace(', ', 'third')
+	str1 = str1.replace('.', ', ')
+	str1 = str1.replace('third', '.')
+	return str1
+	
+string = "14, 625, 498.002"
+print(Replace(string))
+
+Output
+14.625.498, 002
+
+23.Convert numeric words to numbers
+
+help_dict = {
+	'one': '1',
+	'two': '2',
+	'three': '3',
+	'four': '4',
+	'five': '5',
+	'six': '6',
+	'seven': '7',
+	'eight': '8',
+	'nine': '9',
+	'zero': '0'
+}
+
+# initializing string
+test_str = "zero four zero one"
+
+# printing original string
+print("The original string is : " + test_str)
+
+# Convert numeric words to numbers
+# Using join() + split()
+res = ''.join(help_dict[ele] for ele in test_str.split())
+
+# printing result
+print("The string after performing replace : " + res)
+
+Output
+The original string is : zero four zero one
+The string after performing replace : 0401
+
+
+2nd method
+from word2number import w2n
+
+input_string = "zero four zero one"
+result = w2n.word_to_num(input_string)
+print("Converted number:", result)  # Output: 401
+
+
+
+TUPLE:----------------------------------------------------------------------------->
+
+
+1.Find the size of a Tuple in Python
+
+import sys
+
+# sample Tuples
+Tuple1 = ("A", 1, "B", 2, "C", 3)
+Tuple2 = ("Geek1", "Raju", "Geek2", "Nikhil", "Geek3", "Deepanshu")
+Tuple3 = ((1, "Lion"), ( 2, "Tiger"), (3, "Fox"), (4, "Wolf"))
+
+# print the sizes of sample Tuples
+print("Size of Tuple1: " + str(sys.getsizeof(Tuple1)) + "bytes")
+print("Size of Tuple2: " + str(sys.getsizeof(Tuple2)) + "bytes")
+print("Size of Tuple3: " + str(sys.getsizeof(Tuple3)) + "bytes")
+
+
+2.Python program to create a list of tuples from given list having number and its cube in each tuple
+
+# creating a list
+list1 = [1, 2, 5, 6]
+
+res = [(val, val**3) for val in list1]
+
+# print the result
+print(res)
+
+2nd method
+list1 = [1, 2, 5, 6]
+res = list(map(lambda x: (x, x**3), list1))
+print(res)
+#This code is contributed by Edula Vinay Kumar Reddy
+
+3.Python – Adding Tuple to List and vice – versa
+
+# initializing list
+test_list = [5, 6, 7]
+
+# initializing tuple 
+test_tup = (9, 10)
+
+res = tuple(list(test_tup) + test_list)
+
+# printing result 
+print("The container after addition : " + str(res)) 
+
+
+3.Python – Sum of tuple elements
+
+# Initializing tuple
+test_tup = (7, 8, 9, 1, 10, 7)
+
+res = 0
+for i in test_tup:
+	res += i
+
+# Printing result
+print("The summation of tuple elements are : " + str(res))
+
+
+4.Python program to find tuples which have all elements divisible by K from a list of tuples
+
+test_list = [(6, 24, 12), (7, 9, 6), (12, 18, 21)]
+
+# initializing K
+K = 6
+
+# all() used to filter elements
+res = [sub for sub in test_list if all(ele % K == 0 for ele in sub)]
+
+# printing result
+print("K Multiple elements tuples : " + str(res))
+
+Output
+The original list is : [(6, 24, 12), (7, 9, 6), (12, 18, 21)]
+K Multiple elements tuples : [(6, 24, 12)]
+
+
+5.Python program to find Tuples with positive elements in List of tuples
+
+# initializing list
+test_list = [(4, 5, 9), (-3, 2, 3), (-3, 5, 6), (4, 6)]
+
+# printing original list
+print("The original list is : " + str(test_list))
+
+# all() to check each element
+res = [sub for sub in test_list if all(ele >= 0 for ele in sub)]
+
+# printing result
+print("Positive elements Tuples : " + str(res))
+
+
+Output
+The original list is : [(4, 5, 9), (-3, 2, 3), (-3, 5, 6), (4, 6)]
+Positive elements Tuples : [(4, 5, 9), (4, 6)]
+
+
+6.Python | Count tuples occurrence in list of tuples
+
+Input = [('hi', 'bye'),('Geeks', 'forGeeks'),('a', 'b'),('hi', 'bye'),('a', 'b')]
+check_ele=('a', 'b') 
+x=[i for i in Input if i==check_ele] 
+print("tuple ('a', 'b') occurs",len(x),"times")
+
+
+Output
+tuple ('a', 'b') occurs 2 times
+
+
+7.Python | Removing duplicates from tuple
+
+# initialize tuple
+test_tup = (1, 3, 5, 2, 3, 5, 1, 1, 3)
+
+# Removing duplicates from tuple 
+# using tuple() + set()
+res = tuple(set(test_tup))
+
+# printing result
+print("The tuple after removing duplicates : " + str(res))
+
+Output
+The original tuple is : (1, 3, 5, 2, 3, 5, 1, 1, 3)
+The tuple after removing duplicates : (1, 3, 5, 2)
+
+
+8.Python – Extract digits from Tuple list
+
+# initializing list
+test_list = [(15, 3), (3, 9), (1, 10), (99, 2)]
+
+# printing original list
+print("The original list is : " + str(test_list))
+x=""
+# Extract digits from Tuple list
+for i in test_list:
+	for j in i:
+		x+=str(j)
+res=list(map(int,set(x)))
+# printing result
+print("The extracted digits : " + str(res))
+
+Output
+The original list is : [(15, 3), (3, 9), (1, 10), (99, 2)]
+The extracted digits : [2, 3, 0, 1, 9, 5]
+
+
+9.Python – Kth Column Product in Tuple List
+
+test_list = [(5, 6, 7), (1, 3, 5), (8, 9, 19)]
+K = 2
+
+product = 1
+for tup in test_list:
+	product *= tup[K]
+
+print("Product of Kth Column of Tuple List: " + str(product))
+
+
+Output
+Product of Kth Column of Tuple List: 665
+
+
+Python – Flatten tuple of List to tuple
+
+# initializing tuple
+test_tuple = ([5, 6], [6, 7, 8, 9], [3])
+
+# printing original tuple
+print("The original tuple : " + str(test_tuple))
+
+# Flatten tuple of List to tuple
+res = []
+for i in test_tuple:
+	for j in i:
+		res.append(j)
+res = tuple(res)
+# printing result
+print("The flattened tuple : " + str(res))
+
+Output
+The original tuple : ([5, 6], [6, 7, 8, 9], [3])
+The flattened tuple : (5, 6, 6, 7, 8, 9, 3)
+
+
+10.Python | Flatten Tuples List to String
+
+# initialize list of tuple
+test_list = [('1', '4', '6'), ('5', '8'), ('2', '9'), ('1', '10')]
+
+# Flatten Tuples List to String
+res = []
+for i in test_list:
+	res.extend(list(i))
+res = " ".join(res)
+# printing result
+print("Tuple list converted to String is : " + res)
+
+
+Output
+The original list : [('1', '4', '6'), ('5', '8'), ('2', '9'), ('1', '10')]
+Tuple list converted to String is : 1 4 6 5 8 2 9 1 10
+
+
+11.Python program to sort a list of tuples alphabetically
+
+# Function to sort the list
+def SortTuple(tup): 
+
+	# reverse = None (Sorts in Ascending order) 
+	# key is set to sort using first element of 
+	# sublist lambda has been used 
+	tup.sort(key = lambda x: x[0]) 
+	return tup 
+	
+# Driver's code
+
+tup = [("Amana", 28), ("Zenat", 30), ("Abhishek", 29),
+		("Nikhil", 21), ("B", "C")]
+		
+print(SortTuple(tup))
+
+
+Output:
+
+[('Abhishek', 29), ('Amana', 28), ('B', 'C'), ('Nikhil', 21), ('Zenat', 30)]
+
+
+
+SET:------------------------------------------------------------------------------->
+
+
+1.Find the size of a Set in Python
+
+import sys
+
+# sample Sets
+Set1 = {"A", 1, "B", 2, "C", 3}
+Set2 = {"Geek1", "Raju", "Geek2", "Nikhil", "Geek3", "Deepanshu"}
+Set3 = {(1, "Lion"), ( 2, "Tiger"), (3, "Fox")}
+
+# print the sizes of sample Sets
+print("Size of Set1: " + str(sys.getsizeof(Set1)) + "bytes")
+print("Size of Set2: " + str(sys.getsizeof(Set2)) + "bytes")
+print("Size of Set3: " + str(sys.getsizeof(Set3)) + "bytes")
+
+Output:
+
+Size of Set1: 736bytes
+Size of Set2: 736bytes
+Size of Set3: 224bytes
+
+
+2.Iterate over a set in Python
+
+# Creating a set using string
+test_set = set("geEks")
+
+# Iterating using for loop
+for val in test_set:
+	print(val)
+
+Output:
+
+k
+s
+e
+g
+E
+
+
+3.Python | Maximum and Minimum in a Set
+
+# Python code to get the maximum element from a set
+def MAX(sets):
+	return (max(sets))
+	
+# Driver Code
+sets = set([8, 16, 24, 1, 25, 3, 10, 65, 55])
+print(MAX(sets))
+
+
+# Python code to get the minimum element from a set
+def MIN(sets):
+	return (min(sets))
+	
+# Driver Code
+sets = set([4, 12, 10, 9, 4, 13])
+print(MIN(sets))
+
+
+4.Python | Remove items from Set
+
+
+def Remove(initial_set):
+	while initial_set:
+		initial_set.pop()
+		print(initial_set)
+
+
+initial_set = set([12, 10, 13, 15, 8, 9])
+Remove(initial_set)
+
+Output
+{8, 9, 10, 12, 13}
+{8, 9, 10, 12}
+{8, 9, 10}
+{8, 9}
+{8}
+set()
+
+2nd method
+my_set = set([12, 10, 13, 15, 8, 9])
+
+for i in range(len(my_set)):
+	my_set.remove(next(iter(my_set)))
+	print(my_set)
+	
+	
+Output
+set([9, 10, 12, 13, 15])
+set([10, 12, 13, 15])
+set([12, 13, 15])
+set([13, 15])
+set([15])
+set([])
+
+3rd method
+thisset = {"apple", "banana", "cherry"}
+thisset.clear()
+print(thisset)
+
+
+
+5.Python | Check if two lists have at-least one element common
+
+def common_member(a, b):
+	a_set = set(a)
+	b_set = set(b)
+	if len(a_set.intersection(b_set)) > 0:
+		return(True) 
+	return(False) 
+
+a = [1, 2, 3, 4, 5]
+b = [5, 6, 7, 8, 9]
+print(common_member(a, b))
+
+a =[1, 2, 3, 4, 5]
+b =[6, 7, 8, 9]
+print(common_member(a, b))
+
+Output:
+
+True 
+False
+
+
+6.Python program to find common elements in three lists using sets
+
+def IntersecOfSets(arr1, arr2, arr3):
+	result = []
+	for i in arr1:
+		if i in arr2 and i in arr3:
+			result.append(i)
+	print(list(set(result)))
+	
+arr1 = [1, 5, 10, 20, 40, 80]
+arr2 = [6, 7, 20, 80, 100]
+arr3 = [3, 4, 15, 20, 30, 70, 80, 120]
+
+common = IntersecOfSets(arr1, arr2, arr3)
+
+
+Output
+[20, 80]
+
+
+7.Python | Find missing and additional values in two lists
+
+# Python program to find the missing 
+# and additional elements 
+
+# examples of lists
+list1 = [1, 2, 3, 4, 5, 6]
+list2 = [4, 5, 6, 7, 8]
+
+# prints the missing and additional elements in list2 
+print("Missing values in second list:", (set(list1).difference(list2)))
+print("Additional values in second list:", (set(list2).difference(list1)))
+
+# prints the missing and additional elements in list1
+print("Missing values in first list:", (set(list2).difference(list1)))
+print("Additional values in first list:", (set(list1).difference(list2)))
+
+
+Output:
+
+Missing values in second list: {1, 2, 3}
+Additional values in second list: {7, 8}
+Missing values in first list: {7, 8}
+Additional values in first list: {1, 2, 3}
+
+
+8.Python | Difference between two lists
+
+li1 = [10, 15, 20, 25, 30, 35, 40]
+li2 = [25, 40, 35]
+
+temp3 = []
+for element in li1:
+	if element not in li2:
+		temp3.append(element)
+
+print(temp3)
+
+
+Output
+
+[10, 15, 20, 30]
+
+
+9.Python Program to Accept the Strings Which Contains all Vowels
+
+#using all() method 
+
+def check(string):
+	vowels = "aeiou" #storing vowels
+	if all(vowel in string.lower() for vowel in vowels):
+		return "Accepted"
+	return "Not accepted"
+
+
+
+#initializing string
+string = "SEEquoiaL"
+# test the function
+print(check(string))
+
+#this code contributed by tvsk
+
+Output
+Accepted
+
+2nd method
+string = ("SEEquoiaL").lower()
+vowels = "aeiou" #storing vowels
+li=[]
+for i in string:
+    if i in vowels:
+        li.append(i)
+print(set(li))
+
+if len(set(li))==5:
+    print("yes")
+else:
+    print("no")
+
+
+
+10.Python | Check if a given string is binary string or not
+
+def check(string):
+
+	p = set(string)
+
+	# declare set of '0', '1' .
+	s = {'0', '1'}
+
+	# check set p is same as set s
+	# or set p contains only '0'
+	# or set p contains only '1'
+	# or not, if any one condition
+	# is true then string is accepted
+	# otherwise not .
+	if s == p or p == {'0'} or p == {'1'}:
+		print("Yes")
+	else:
+		print("No")
+
+
+# driver code
+if __name__ == "__main__":
+
+	string = "101010000111"
+
+	# function calling
+	check(string)
+  
+  
+2nd method
+s=("egKGH1101").lower()
+l="abcdefghijklmnopqrstuvwxyz"
+li=[]
+for i in s:
+    if i in l:
+        li.append(i)
+
+if len(li):
+    print("No")
+else:
+    print("yes")
+
+
+11.Python set to check if string is pangram
+
+# function to check if all elements are present or not
+
+string ="The quick brown fox jumps over the lazy dog"
+string=string.replace(" ","")
+string=string.lower()
+x=list(set(string))
+x.sort()
+x="".join(x)
+alphabets="abcdefghijklmnopqrstuvwxyz"
+if(x==alphabets):
+	print("The string is a pangram")
+else:
+	print("The string isn't a pangram")
+
+
+Output
+The string is a pangram
+
+
+12.Python Set | Check whether a given string is Heterogram or not
+
+# Function to Check whether a given string is Heterogram or not - 
+# A heterogram is a word, phrase, or sentence in which no letter of the alphabet occurs more than once
+def heterogram(input):
+	# separate out list of alphabets using list comprehension
+	# ord function returns ascii value of character
+	alphabets = [ch for ch in input if (
+		ord(ch) >= ord('a') and ord(ch) <= ord('z'))]
+	# convert list of alphabets into set and
+	# compare lengths
+	if len(set(alphabets)) == len(alphabets):
+		print('Yes')
+	else:
+		print('No')
+
+
+# Driver program
+if __name__ == "__main__":
+	input = 'the big dwarf only jumps'
+	heterogram(input)
+
+
+Output:
+
+Yes
+
+
+
+DICTIONARY:------------------------------------------------------------------------------------->
+
+
+Exercise 1: Write a program to check whether a given key exists in a dictionary or not.
+
+dict = {'0':1, '1':2, '2':3}
+x = input("Enter value to check ")
+
+if x in dict.keys():
+    print(True)
+else:
+    print(False)
+	
+Exercise 2: Write a program to iterate over dictionary items using for loop
+
+# iteration using fr loop
+dict = {0:"Value 1", 1:"Value 2", 2:"Value 3"}
+
+for key, val in dict.items():
+    print(f" Value of key {key} is {val}")
+	
+	
+Exercise 3: Write a program to print only keys of a dictionary.
+
+# print all the keys of dictionary
+dict = {0:"Value 1", 1:"Value 2", 2:"Value 3"}
+keys = dict.keys()
+
+# printing result
+print(keys)
+
+Exercise 4: Write a program to print values of dictionary.
+
+# print only values
+dict = {0:"Value 1", 1:"Value 2", 2:"Value 3"}
+val = dict.values()
+
+# printing result
+print(val)
+
+
+Exercise 5: Write a program in python to map 2 lists into a dictionary.
+
+# Given two list convert it into dict
+keys = [1,2,3]
+values = ['Value 1', 'Value 2', 'Value 3']
+
+# zip function in dictionary
+dict = dict(zip(keys, values))
+
+# printing result
+print(dict)
+
+
+Exercise 6: Python program to remove a set of keys.
+
+# delete a set of keys
+dict = {0:"Value 1", 1:"Value 2", 2:"Value 3"}
+keys_to_remove = [0,1]
+
+dict = { k: dict[k] for k in dict.keys() - keys_to_remove }
+print(dict)
+
+
+Exercise 7: Python program to sort dictionary by values (Ascending/ Descending).
+
+# Sort dictionary in ascending / descending
+import operator
+d = {'key 1': 2, 'key 2': 3, 'key 3': 4}
+print('Original dictionary : ',d)
+
+# in ascending
+sort_a = sorted(d.items(), key=operator.itemgetter(1))
+print('In Ascending by value : ',sort_a)
+
+# in descending
+sort_d = sorted(d.items(), key=operator.itemgetter(1), reverse=True)
+print('In Descending by value : ',sort_d)
+
+
+Exercise 8: Write a program to concatenate two dictionaries to create one.
+
+# Concatenate 2 dict to create one dict
+dict1 = {'key 1': 2, 'key 2': 3}
+dict2 = {'key 3': 4, 'key 4': 5}
+
+# updating dict1 with dict2 using update method
+dict1.update(dict2)
+
+# changes made to dict1
+# printing updated dict1
+print(dict1)
+
+
+Exercise 9: Write a program to sum all the values of a dictionary.
+
+# Sum of dict values
+dict1 = {'key 1': 200, 'key 2': 300}
+x = []
+for i in dict1.values():
+    x.append(i)
+
+# printing result
+print(sum(x))
+
+Exercise 10: Write a program to get the maximum and minimum value of dictionary.
+
+# min and max of dict - values
+dict1 = {'key 1': 200, 'key 2': 300}
+val = dict1.values()
+max = max(val)
+min = min(val)
+
+# printing result
+print(f"{max} is maximum")
+print(f"{min} is mimimum")
+
+
+Exercise 11: Write a program to check if a dictionary is empty or not.
+
+# Dictionary is empty or not
+# initialize empty dictionary
+dict1 = {}
+
+# using boolean if dictionary is empty
+result = not bool(dict1)
+
+# printing result
+print("Is dictionary empty ? : " + str(result))
+
+Exercise 12: Write a program in Python to choose a random item from a list.
+
+# value exist or not
+dict1 = {'key 1': 22, 'key 2': 301}
+val = dict1.values()
+
+if 22 in val:
+    print("Value exists in dictionary")
+else:
+    print("Value does not exist")
+
+# Sameway we can check for keys
+
+
+Exercise 13: Write a program to sort dictionary values in python.
+
+# Sorting dictionary by value
+dict1 = {
+         'key 1': 'Apple',
+         'key 3':'Mango',
+         'key 2':'Papaya'
+         }
+
+for key in sorted(dict1):
+    # printing result
+    print("%s : %s" % (key, dict1[key]))
+
+Output
+key 1 Apple
+key 2 Papaya
+key 3 Mango
+	
+
+Exercise 14: Write a program to check whether a key exists in the dictionary or not.
+
+# key exist or not
+dict1 = {'key 1': 22, 'key 2': 301}
+val = dict1.keys()
+
+if 'key 2' in val:
+    print("Key exists in dictionary")
+else:
+    print("Key does not exist")
+
+#Sameway we can check for values
+
+
+Exercise 15: Write a program in python to map keys to dictionary.
+
+# Mapping keys to dictionary
+key = ['Fruit', 'Vegetable']
+value = ['Mango','Tomato']
+
+dict1 = dict(zip(key, value))
+# printing result
+print(dict1)
+
+
+Exercise 16: Write a program in Python to remove repetitive items from a list.
+
+num = [2,3,4,5,2,6,3,2]
+x = []
+for i in range(len(num)):
+    if num[i] not in x:
+        x.append(num[i])
+    else:
+        pass
+
+# printing result
+print(x)
+
+
+17.Get size of a Dictionary in Python
+
+import sys
+
+# sample Dictionaries
+dic1 = {"A": 1, "B": 2, "C": 3}
+dic2 = {"Geek1": "Raju", "Geek2": "Nikhil", "Geek3": "Deepanshu"}
+dic3 = {1: "Lion", 2: "Tiger", 3: "Fox", 4: "Wolf"}
+
+# print the sizes of sample Dictionaries
+print("Size of dic1: " + str(sys.getsizeof(dic1)) + "bytes")
+print("Size of dic2: " + str(sys.getsizeof(dic2)) + "bytes")
+print("Size of dic3: " + str(sys.getsizeof(dic3)) + "bytes")
+
+
+
+18.Python program to find the sum of all items in a dictionary
+
+def returnSum(myDict):
+
+	list = []
+	for i in myDict:
+		list.append(myDict[i])
+	final = sum(list)
+
+	return final
+
+
+# Driver Function
+dict = {'a': 100, 'b': 200, 'c': 300}
+print("Sum :", returnSum(dict))
+
+Output:
+
+Sum : 600
+
+
+19.Python | Merging two Dictionaries
+
+dict1 = {'a': 1, 'b': 2}
+dict2 = {'b': 3, 'c': 4}
+
+dict1.update(dict2)
+print(dict1)  # Output: {'a': 1, 'b': 3, 'c': 4}
+
+Using the ** unpacking operator:
+
+dict1 = {'a': 1, 'b': 2}
+dict2 = {'b': 3, 'c': 4}
+
+merged_dict = {**dict1, **dict2}
+print(merged_dict)  # Output: {'a': 1, 'b': 3, 'c': 4}
+
+
+20.How to combine two lists of dictionaries?
+
+list1 = [{'a': 1}, {'b': 2}]
+list2 = [{'c': 3}, {'d': 4}]
+
+combined_list = list1 + list2
+print(combined_list)  # Output: [{'a': 1}, {'b': 2}, {'c': 3}, {'d': 4}]
+
+
+21.Python | Ways to remove a key from dictionary
+
+# Initializing dictionary
+test_dict = {"Arushi": 22, "Mani": 21, "Haritha": 21}
+
+
+# Using del to remove a dict
+# removes Mani
+del test_dict['Mani']
+
+# Printing dictionary after removal
+print("The dictionary after remove is : ", test_dict)
+
+# Using del to remove a dict
+# raises exception
+del test_dict['Mani']
+
+
+22.Python – Replace words from Dictionary
+
+# initializing string
+test_str = 'geekforgeeks best for geeks'
+
+# printing original string
+print("The original string is : " + str(test_str))
+
+# lookup Dictionary
+lookp_dict = {"best" : "good and better", "geeks" : "all CS aspirants"}
+
+# performing split()
+temp = test_str.split()
+res = []
+for wrd in temp:
+	
+	# searching from lookp_dict
+	res.append(lookp_dict.get(wrd, wrd))
+	
+res = ' '.join(res)
+
+# printing result 
+print("Replaced Strings : " + str(res)) 
+
+Output
+The original string is : geekforgeeks best for geeks
+Replaced Strings : geekforgeeks good and better for all CS aspirants
+
+
+23.Python – Remove Dictionary Key Words
+
+# initializing string
+test_str = 'gfg is best for geeks'
+
+# printing original string
+print("The original string is : " + str(test_str))
+
+# initializing Dictionary
+test_dict = {'geeks': 1, 'best': 6}
+
+# Remove Dictionary Key Words
+# Using split() + loop + replace()
+for key in test_dict:
+	if key in test_str.split(' '):
+		test_str = test_str.replace(key, "")
+
+# Printing result
+print("The string after replace : " + str(test_str))
+
+Output : 
+The original string is : gfg is best for geeks
+The string after replace : gfg is  for 
+
+
+24.Python | Remove all duplicates words from a given sentence
+
+string = 'Python is great and Java is also great'
+print(' '.join(set(string.split())))
+
+2nd method
+# Python3 program
+
+string = 'Python is great and Java is also great'
+
+print(' '.join(dict.fromkeys(string.split())))
+
+Output
+Java also great and Python is
+
+
+25.Counting the frequencies in a list using dictionary in Python
+
+def CountFrequency(my_list):
+
+	# Creating an empty dictionary
+	freq = {}
+	for item in my_list:
+		if (item in freq):
+			freq[item] += 1
+		else:
+			freq[item] = 1
+
+	for key, value in freq.items():
+		print("% d : % d" % (key, value))
+
+
+# Driver function
+if __name__ == "__main__":
+	my_list = [1, 1, 1, 5, 5, 3, 1, 3, 3, 1, 4, 4, 4, 2, 2, 2, 2]
+
+	CountFrequency(my_list)
+
+Output: 
+
+ 1 :  5
+ 2 :  4
+ 3 :  3
+ 4 :  3
+ 5 :  2
+ 
+ 
+26.Python – Convert Key-Value list Dictionary to List of Lists
+
+# initializing Dictionary
+test_dict = {'gfg': [1, 3, 4], 'is': [7, 6], 'best': [4, 5]}
+
+# printing original dictionary
+print("The original dictionary is : " + str(test_dict))
+
+# Convert Key-Value list Dictionary to Lists of List
+# Using loop + items()
+res = []
+for key, val in test_dict.items():
+	res.append([key] + val)
+
+# printing result
+print("The converted list is : " + str(res))
+
+Output
+The original dictionary is : {'gfg': [1, 3, 4], 'is': [7, 6], 'best': [4, 5]}
+The converted list is : [['gfg', 1, 3, 4], ['is', 7, 6], ['best', 4, 5]]
+
+
+27.Python | Convert a list of Tuples into Dictionary
+
+
+# Python code to convert into dictionary
+
+print(dict([('Sachin', 10), ('MSD', 7), ('Kohli', 18), ('Rohit', 45)]))
+
+Output:
+
+{'Sachin': 10, 'MSD': 7, 'Kohli': 18, 'Rohit': 45}
+
+
+28.Ways to convert string to dictionary
+
+# initialising first string
+str1 = "Jan, Feb, March"
+str2 = "January | February | March"
+
+# splitting first string
+# in order to get keys
+keys = str1.split(", ")
+
+# splitting second string
+# in order to get values
+values = str2.split("|")
+
+# declaring the dictionary
+dictionary = {}
+
+# Assigning keys and its
+# corresponding values in
+# the dictionary
+dictionary = dict(zip(keys, values))
+
+# printing the generated dictionary
+print(dictionary)
+
+Output
+{'Jan': 'January ', 'Feb': ' February ', 'March': ' March'}
+
+
+29.Python – Sort Dictionary key and values List
+
+
+# initializing dictionary
+test_dict = {'gfg': [7, 6, 3], 
+			'is': [2, 10, 3], 
+			'best': [19, 4]}
+
+res = dict()
+for key in sorted(test_dict):
+	res[key] = sorted(test_dict[key])
+
+# printing result 
+print("The sorted dictionary : " + str(res)) 
+
+Output : 
+
+The original dictionary is : {‘gfg’: [7, 6, 3], ‘is’: [2, 10, 3], ‘best’: [19, 4]} 
+The sorted dictionary : {‘best’: [4, 19], ‘gfg’: [3, 6, 7], ‘is’: [2, 3, 10]}
+
+
+
+
+
+FILE HANDLING:-------------------------------------------------------------------------------->
+
+Read content from one file and write it into another file
+
+with open("gfg input file.txt", "r") as input: 
+	
+	# Creating "gfg output file.txt" as output 
+	# file in write mode 
+	with open("gfg output file.txt", "w") as output: 
+		
+		# Writing each line from input file to 
+		# output file using loop 
+		for line in input: 
+			output.write(line)
+
+
+1. Write a function in python to read the content from a text file "poem.txt" line by line and display the same on screen
+
+def read_file():
+    file = open("poem.txt","r")
+    for line in file:
+        print(line, end="")
+    file.close()
+
+read_file()
+
+Write a function in python to count the number of lines from a text file "story.txt" which is not starting with an alphabet "T". 
+
+Example: If the file "story.txt" contains the following lines: A boy is playing there.
+There is a playground.
+An aeroplane is in the sky.
+The sky is pink.
+Alphabets and numbers are allowed in the password.
+
+The function should display the output as 3
+
+def line_count():
+    file = open("story.txt","r")
+    count=0
+    for line in file:
+        if line[0] not in 'T':
+            count+= 1
+    file.close()
+    print("No of lines not starting with 'T'=",count)
+
+line_count()
+
+
+3. Write a function in Python to count and display the total number of words in a text file.
+
+
+def count_words():
+    file = open("notes.txt","r")
+    count = 0
+    data = file.read()
+    words = data.split()
+    for word in words:
+        count += 1
+    print("Total words are",count)
+    file.close()
+
+count_words()
+
+
+4. Write a function in Python to read lines from a text file "notes.txt". Your function should find and display the occurrence of the word "the".
+
+For example: If the content of the file is:
+"India is the fastest-growing economy. India is looking for more investments around the globe. The whole world is looking at India as a great market. Most of the Indians can foresee the heights that India is capable of reaching."
+
+The output should be 5.
+
+def count_words():
+    file = open("notes.txt","r")
+    count = 0
+    data = file.read()
+    words = data.split()
+    for word in words:
+        if word =="the" or word =="The":
+            count += 1
+    print(count)
+    file.close()
+
+count_words()
+
+
+5. Write a function display_words() in python to read lines from a text file "story.txt", and display those words, which are less than 4 characters.
+
+def display_words():
+    file = open("poem.txt","r")
+    data = file.read()
+    words = data.split()
+    for word in words:
+        if len(word) < 4:
+            print(word, end=" ")
+    file.close()
+
+display_words()
+
+
+6. Write a function in Python to count the words "this" and "these" present in a text file "article.txt". [Note that the words "this" and "these" are complete words]
+
+def count_words():
+    file = open("article.txt","r")
+    count = 0
+    data = file.read()
+    words = data.split()
+    for word in words:
+        if word == 'this' or word =='these':
+            count+=1
+    print(count)
+    file.close()
+
+count_words()
+
+
+7. Write a function in Python to count words in a text file those are ending with alphabet "e".
+
+def count_words():
+    file = open("article.txt","r")
+    count = 0
+    data = file.read()
+    words = data.split()
+    for word in words:
+        if word[-1] == 'e':
+            count+=1
+    print(count)
+    file.close()
+
+count_words()
+
+8. Write a function in Python to count uppercase character in a text file.
+
+def count_letter():
+    file = open("article.txt","r")
+    data = file.read()
+    count = 0
+    for letter in data:
+        if letter.isupper():
+            count+=1
+    print(count)
+    file.close()
+
+count_letter()
+
+
+9. A text file named "matter.txt" contains some text, which needs to be displayed such that every next character is separated by a symbol "#". 
+Write a function definition for hash_display() in Python that would display the entire content of the file matter.txt in the desired format.
+
+Example :
+If the file matter.txt has the following content stored in it :
+THE WORLD IS ROUND
+
+The function hash_display() should display the following content :
+T#H#E# #W#O#R#L#D# #I#S# #R#O#U#N#D# 
+
+
+def count_hash():
+    file = open("matter.txt","r")
+    data = file.read()
+    for letter in data:
+        print(letter, end="#")
+
+    file.close()
+
+count_hash()
+
+
+10. Aditi has used a text editing software to type some text. After saving the article as WORDS.TXT, she realised that she has wrongly typed alphabet J in place of alphabet I everywhere in the article.
+
+
+Write a function definition for JTOI() in Python that would display the corrected version of entire content of the file WORDS.TXT with all the alphabets "J" to be displayed as an alphabet "I" on screen.
+
+Note: Assuming that WORD.TXT does not contain any J alphabet otherwise.
+
+Example:
+If Aditi has stored the following content in the file WORDS.TXT:
+WELL, THJS JS A WORD BY JTSELF. YOU COULD STRETCH THJS TO BE A SENTENCE
+The function JTOI() should display the following content:
+WELL, THIS IS A WORD BY ITSELF. YOU COULD STRETCH THIS TO BE A SENTENCE 
+
+def JTOI():
+    file = open("words.txt","r")
+    data = file.read()
+    for letter in data:
+        if letter == 'J':
+            print("I",end="")
+        else:
+            print(letter,end="")
+
+    file.close()
+
+JTOI()
+
+
+11. Write a function AMCount() in Python, which should read each character of a text file STORY.TXT, should count and display the occurance of alphabets A and M (including small cases a and m too).
+For Example:
+If the file content is as follows:
+Updated information
+As simplified by official websites.
+The EUCount() function should display the output as:
+A or a:4
+M or m :2
+
+
+def AMcount():
+    file = open('notes.txt','r')
+    data = file.read()
+    counta=0
+    countm=0
+    for letter in data:
+        if letter == 'A' or letter =='a':
+            counta += 1
+        elif letter == 'M' or letter =='m':
+            countm += 1
+
+    file.close()
+    print('A or a:',counta)
+    print('M or m:',countm)
+
+AMcount()
+
+Writing to a File
+
+text = "This is new content"
+# writing new content to the file
+fp = open("write_demo.txt", 'w')
+fp.write(text)
+print('Done Writing')
+fp.close()
+
+Move File Pointer
+
+f = open("sample.txt", "r")
+# move to 11 character
+f.seek(11)
+# read from 11th character
+print(f.read())
+
+
+Copy Files
+
+import shutil
+
+src_path = r"E:\demos\files\report\profit.txt"
+dst_path = r"E:\demos\files\account\profit.txt"
+shutil.copy(src_path, dst_path)
+print('Copied')
+
+
+Rename Files
+
+import os
+
+# Absolute path of a file
+old_name = r"E:\demos\files\reports\details.txt"
+new_name = r"E:\demos\files\reports\new_details.txt"
+
+# Renaming the file
+os.rename(old_name, new_name)
+
+Delete Files
+
+import os
+
+# remove file with absolute path
+os.remove(r"E:\demos\files\sales_2.txt")
+
+
+
+DATETIME:------------------------------------------------------------------------>
+
+Exercise 1: Print current date and time in Python
+
+import datetime
+
+# Print date and time
+print(datetime.datetime.now())
+
+# only time
+print(datetime.datetime.now().time())
+
+2nd method
+from time import gmtime, strftime
+
+print(strftime("%Y-%m-%d %H:%M:%S", gmtime()))
+
+
+Exercise 2: Convert string into a datetime object
+
+
+Expected output:
+
+2020-02-25 16:20:00
+
+from datetime import datetime
+
+date_string = "Feb 25 2020  4:20PM"
+datetime_object = datetime.strptime(date_string, '%b %d %Y %I:%M%p')
+print(datetime_object)
+
+
+
+Exercise 3: Subtract a week (7 days)  from a given date in Python
+
+
+Expected output:
+
+2020-02-18
+
+from datetime import datetime, timedelta
+
+given_date = datetime(2020, 2, 25)
+print("Given date")
+print(given_date)
+
+days_to_subtract = 7
+res_date = given_date - timedelta(days=days_to_subtract)
+print("New Date")
+print(res_date)
+
+
+Exercise 4: Print a date in a the following format
+
+Expected output:
+
+Tuesday 25 February 2020
+
+from datetime import datetime
+
+given_date = datetime(2020, 2, 25)
+print("Given date is")
+print(given_date.strftime('%A %d %B %Y'))
+
+
+
+Exercise 5: Find the day of the week of a given date
+
+Expected output:
+
+Sunday
+
+from datetime import datetime
+
+given_date = datetime(2020, 7, 26)
+
+# to get weekday as integer
+print(given_date.today().weekday())
+
+# To get the english name of the weekday
+print(given_date.strftime('%A'))
+
+
+Solution 2 using calendar module
+
+import calendar
+from datetime import datetime
+
+given_date = datetime(2020, 7, 26)
+weekday = calendar.day_name[given_date.weekday()]
+print(weekday)
+
+
+Exercise 6: Add a week (7 days) and 12 hours to a given date
+
+Expected output:
+
+2020-03-29 22:00:00
+
+from datetime import datetime, timedelta
+
+given_date = datetime(2020, 3, 22, 10, 00, 00)
+print("Given date")
+print(given_date)
+
+days_to_add = 7
+res_date = given_date + timedelta(days=days_to_add, hours=12)
+print("New Date")
+print(res_date)
+
+
+Exercise 7: Print current time in milliseconds
+
+import time
+
+milliseconds = int(round(time.time() * 1000))
+print(milliseconds)
+
+
+Exercise 8: Convert the following datetime into a string
+
+Expected output:
+
+"2020-02-25 00:00:00"
+
+from datetime import datetime
+
+given_date = datetime(2020, 2, 25)
+string_date = given_date.strftime("%Y-%m-%d %H:%M:%S")
+print(string_date)
+
+
+Exercise 9: Calculate the date 4 months from the current date
+
+Expected output:
+
+2020-06-25
+
+from datetime import datetime
+
+from dateutil.relativedelta import relativedelta
+
+# 2020-02-25
+given_date = datetime(2020, 2, 25).date()
+
+months_to_add = 4
+new_date = given_date + relativedelta(months=+ months_to_add)
+print(new_date)
+
+
+Exercise 10: Calculate number of days between two given dates
+
+Expected output:
+
+205 days
+
+from datetime import datetime
+
+# 2020-02-25
+date_1 = datetime(2020, 2, 25).date()
+# 2020-09-17
+date_2 = datetime(2020, 9, 17).date()
+
+delta = None
+if date_1 > date_2:
+    print("date_1 is greater")
+    delta = date_1 - date_2
+else:
+    print("date_2 is greater")
+    delta = date_2 - date_1
+print("Difference is", delta.days, "days")
+
+
+PATTERN:----------------------------------------------------------------------------->
+
+
+1. Square Pattern in Python
+
+# Square pattern program
+size = 5
+
+# Create a list of rows
+for i in range(0, size):
+    # Create a list of columns
+    for j in range(0, size):
+        print("*", end="")
+    print()
+
+2nd method
+# Square pattern program
+size = 5
+
+for i in range(0, size):
+    # printing * for 'size' times and a new line
+    print("*" * size)
+	
+Output:
+
+*****
+*****
+*****
+*****
+*****
+
+2. Hollow Square Pattern
+
+# hollow square pattern
+size = 5
+for i in range(size):
+    for j in range(size):
+        # print * completely in first and last row
+        # print * only in first and last position in other rows
+        if i == 0 or i == size - 1 or j == 0 or j == size - 1:
+            print('*', end='')
+        else:
+            print(' ', end='')
+    print()
+
+2nd method
+# hollow square pattern
+size = 5
+for i in range(size):
+    # print star in first and last row
+    if i == 0 or i == size - 1:
+        print('*' * size)
+    else:
+        # print * in first and last position in other rows
+        print('*' + ' ' * (size - 2) + '*')
+
+Output:
+
+*****
+*   *
+*   *
+*   *
+*****
+
+
+3. Left Triangle Star Pattern In Python
+
+# Left triangle star pattern
+n = 5
+
+for i in range(1, n+1):
+    # internal loop run for i times
+    for k in range(1, i+1):
+        print("*", end="")
+    print()
+
+2nd method
+# Left triangle star pattern
+n = 5
+
+for i in range(1, n+1):
+    print("*" * i)
+
+Output:
+
+*
+**
+***
+****
+*****
+
+
+4. Right Triangle Star Pattern In Python
+
+# right triangle star pattern
+size = 5
+for i in range(size):
+    for j in range(1, size - i):
+        print(" ", end="")
+    for k in range(0, i + 1):
+        print("*", end="")
+    print()
+	
+2nd method
+# Left triangle star pattern
+size = 5
+for i in range(1, size+1):
+    print(" " * (size - i) + "*" * i)
+	
+Output:
+
+    *
+   **
+  ***
+ ****
+*****
+
+
+5. Left Downward Triangle Pattern
+
+# downward triangle star pattern
+n = 5
+
+for i in range(n):
+    # internal loop run for n - i times
+    for j in range(n - i):
+        print('*', end='')
+    print()
+
+2nd method
+# downward triangle star pattern
+n = 5
+for i in range(n):
+    print('*' * (n - i))
+
+Output:
+
+*****
+****
+***
+**
+*
+
+
+6. Right Downward Triangle Pattern
+
+# downward triangle star pattern
+size = 5
+for i in range(size):
+    for j in range(i):
+        print(" ", end="")
+    for j in range(size-i):
+        print("*", end="")
+    print()
+	
+Output:
+
+*****
+ ****
+  ***
+   **
+    *
+	
+
+7. Hollow triangle star Pattern
+
+# hollow triangle star pattern
+n = 6
+for i in range(1, n+1):
+    for j in range(i):
+        # print star only at start and end of the row
+        if j == 0 or j == i-1:
+            print('*', end='')
+        # print only star if it's last row
+        else:
+            if i != n:
+                print(' ', end='')
+            else:
+                print('*', end='')
+    print()
+
+Output:
+
+*
+**
+* *
+*  *
+*   *
+******
+
+
+8. Pyramid Pattern in python
+
+# pyramid star pattern
+n=5
+for i in range(n):
+    for j in range(n-i-1):
+        print(" ",end=" ")
+    for k in range(2*i+1):
+        print("*",end=" ")
+    print()
+
+2nd method
+# pyramid star pattern
+n = 5
+for i in range(1, n+1):
+    print(' ' * (n - i) + '*' * (2 * i - 1))
+	
+Output:
+
+    *
+   ***
+  *****
+ *******
+*********
+
+9. Hollow Pyramid Pattern In Python
+
+# hollow pyramid star pattern
+n = 5
+for i in range(1, n+1):
+    # printing spaces
+    for j in range(n - i):
+        print(' ', end='')
+
+    # printing stars
+    for k in range(2 * i - 1):
+        # print star at start and end of the row
+        if k == 0 or k == 2 * i - 2:
+            print('*', end='')
+        else:
+            if i == n:
+                print('*', end='')
+            else:
+                print(' ', end='')
+    print()
+	
+Output:
+
+    *
+   * *
+  *   *
+ *     *
+*********
+
+
+10. Reverse Pyramid Pattern In Python
+
+# reverse pyramid pattern
+n = 5
+
+for i in range(1, n+1):
+    # printing spaces
+    for j in range(i-1):
+        print(' ', end='')
+    # printing stars
+    for j in range(2*(n-i)+1):
+        print('*', end='')
+    print()
+	
+Output:
+
+*********
+ *******
+  *****
+   ***
+    *
+	
+
+11. Diamond Star Pattern In Python
+
+# diamond star pattern
+n = 5
+
+# upward pyramid
+for i in range(n):
+    for j in range(n - i - 1):
+        print(' ', end='')
+    for j in range(2 * i + 1):
+        print('*', end='')
+    print()
+
+# downward pyramid
+for i in range(n - 1):
+    for j in range(i + 1):
+        print(' ', end='')
+    for j in range(2*(n - i - 1) - 1):
+        print('*', end='')
+    print()
+	
+
+Output:
+
+    *
+   ***
+  *****
+ *******
+*********
+ *******
+  *****
+   ***
+    *
+	
+	
+13. Hourglass Star Pattern In Python
+
+# hourglass star pattern
+n = 5
+
+# downward pyramid
+for i in range(n-1):
+    for j in range(i):
+        print(' ', end='')
+    for k in range(2*(n-i)-1):
+        print('*', end='')
+    print()
+# upward pyramid
+for i in range(n):
+    for j in range(n-i-1):
+        print(' ', end='')
+    for k in range(2*i+1):
+        print('*', end='')
+    print()
+
+Output:
+
+*********
+ *******
+  *****
+   ***
+    *
+   ***
+  *****
+ *******
+*********
+
+14. Right Pascal Star Pattern In Python
+
+# right pascal triangle
+n = 5
+
+# upper triangle
+for i in range(n):
+    for j in range(i + 1):
+        print('*', end="")
+    print()
+# lower triangle
+for i in range(n):
+    for j in range(n - i - 1):
+        print('*', end="")
+    print()
+	
+2nd method
+# right pascal triangle
+n = 5
+
+for i in range(n):
+    print('*' * (i + 1))
+for i in range(n):
+    print('*' * (n - i - 1))
+
+Output:
+
+*
+**
+***
+****
+*****
+****
+***
+**
+*
+
+
+1. Square Alphabet Pattern in Python
+
+# square alphabet pattern
+
+size = 5
+count = 0
+
+for i in range(size):
+    for j in range(size):
+        print(chr(65 + count), end=" ")
+        # changing charater
+        count += 1
+    print()
+	
+Output:
+
+A B C D E 
+F G H I J 
+K L M N O 
+P Q R S T 
+U V W X Y
+
+# square alphabet pattern
+
+size = 5
+
+for i in range(size):
+    for j in range(size):
+        print(chr(65 + i), end=" ")
+    print()
+
+Output:
+
+A A A A A 
+B B B B B 
+C C C C C 
+D D D D D 
+E E E E E
+
+# square alphabet pattern
+
+size = 5
+
+for i in range(size):
+    for j in range(65, 65+size):
+        print(chr(j), end=' ')
+    print()
+	
+2. Left Triangle Alphabet Pattern in Python
+
+# Left triangle pattern
+n = 5
+for i in range(n):
+    for j in range(i+1):
+        print(chr(j + 65), end="")
+    print()
+
+Output:
+
+A
+AB
+ABC
+ABCD
+ABCDE
+
+3. Right triangle Pattern
+
+# right triangle pattern
+size = 5
+for i in range(size):
+    for j in range(1, size - i):
+        print(" ", end="")
+    for k in range(i + 1):
+        print(chr(65 + k), end="")
+    print()
+
+Output:
+
+    A
+   AB
+  ABC
+ ABCD
+ABCDE
+
+
+4. Hollow triangle alphabet Pattern
+
+# hollow triangle alphabet pattern
+n = 6
+for i in range(1, n+1):
+    count = 0
+    for j in range(i):
+        # print alphabets only at start and end of the row
+        if j == 0 or j == i-1:
+            print(chr(65 + count), end='')
+            count += 1
+        # print only alphabets if it's last row
+        else:
+            if i != n:
+                print(' ', end='')
+            else:
+                print(chr(65 + count), end='')
+                count += 1
+    print()
+	
+Output:
+
+A
+AB
+A B
+A  B
+A   B
+ABCDEF
+
+5. Pyramid Alphabet Pattern in Python
+
+# pyramid alphabet pattern
+n = 5
+for i in range(n):
+    for j in range(n - i - 1):
+        print(' ', end='')
+    for k in range(2 * i + 1):
+        print(chr(65 + k), end='')
+    print()
+	
+Output:
+
+    A
+   ABC
+  ABCDE
+ ABCDEFG
+ABCDEFGHI
+
+
+7. Reverse pyramid pattern
+
+# reverse pyramid pattern
+n = 5
+
+for i in range(n):
+    # printing spaces
+    for j in range(i):
+        print(' ', end='')
+    # printing alphabet
+    for j in range(2*(n-i)-1):
+        print(chr(65 + j), end='')
+    print()
+	
+Output:
+
+ABCDEFGHI
+ABCDEFG
+ ABCDE
+  ABC
+   A
+   
+
+8. Diamond pattern
+
+# diamond alphabet pattern
+n = 5
+
+# upward pyramid
+for i in range(n):
+    for j in range(n - i - 1):
+        print(' ', end='')
+    for j in range(2 * i + 1):
+        print(chr(65 + j), end='')
+    print()
+
+# downward pyramid
+for i in range(n - 1):
+    for j in range(i + 1):
+        print(' ', end='')
+    for j in range(2*(n - i - 1) - 1):
+        print(chr(65 + j), end='')
+    print()
+
+Output:
+
+    A
+   ABC
+  ABCDE
+ ABCDEFG
+ABCDEFGHI
+ ABCDEFG
+  ABCDE
+   ABC
+    A
+
+
+1. Square Patterns
+
+# square pattern
+        
+for i in range(5):
+    for j in range(5):
+        print(j+1, end=' ')
+    print() # new line
+	
+Output:
+
+1 2 3 4 5
+1 2 3 4 5
+1 2 3 4 5
+1 2 3 4 5
+1 2 3 4 5
+
+
+2. Left Triangle Alphabet Pattern
+
+# Left triangle pattern
+n = 5
+for i in range(n+1):
+    for j in range(1, i+1):
+        print(j, end=' ')
+    print()
+
+Output:
+
+1 
+1 2 
+1 2 3 
+1 2 3 4 
+1 2 3 4 5
+
+
+# Left triangle pattern
+n = 5
+for i in range(n+1):
+    for j in range(1, i+1):
+        print(i, end=' ')
+    print()
+
+Output:
+1 
+2 2 
+3 3 3 
+4 4 4 4 
+5 5 5 5 5
+
+
+3. Right triangle Pattern
+
+# right triangle pattern
+size = 5
+for i in range(size):
+    for j in range(1, size - i):
+        print(" ", end="")
+    for k in range(1, i + 2):
+        print(k, end='')
+    print()
+
+Output:
+
+    1
+   12
+  123
+ 1234
+12345
+
+
+5. Number Pyramid Pattern
+
+# pyramid number pattern
+n = 5
+for i in range(n):
+    for j in range(n - i - 1):
+        print(' ', end='')
+    for k in range(2 * i + 1):
+        print(k + 1, end='')
+    print()
+	
+Output:
+
+    1
+   123
+  12345
+ 1234567
+123456789
+
+7. Reverse Number Pyramid Pattern
+
+# reverse pyramid pattern
+n = 5
+
+for i in range(n):
+    # printing spaces
+    for j in range(i):
+        print(' ', end='')
+    # printing alphabet
+    for j in range(2*(n-i)-1):
+        print(j+1, end='')
+    print()
+
+Output:
+
+123456789
+ 1234567
+  12345
+   123
+    1
+	
+
+8. Number Diamond Pattern
+
+# diamond number pattern
+n = 5
+
+# upward pyramid
+for i in range(n):
+    for j in range(n - i - 1):
+        print(' ', end='')
+    for j in range(2 * i + 1):
+        print(j+1, end='')
+    print()
+
+# downward pyramid
+for i in range(n - 1):
+    for j in range(i + 1):
+        print(' ', end='')
+    for j in range(2*(n - i - 1) - 1):
+        print(j+1, end='')
+    print()
+	
+Output:
+
+    1
+   123
+  12345
+ 1234567
+123456789
+ 1234567
+  12345
+   123
+    1
+	
+
