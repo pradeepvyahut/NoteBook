@@ -430,6 +430,170 @@ df.withColumn("lead", lead("Salary", 1).over(windowspec)).show()
     display(df3)
 
 
+26.Real Time Use Case: Generate Test Data - Array_Repeat():
+    
+    Exp: ID  Name
+         10  Raja
+           --------->
+         
+         ID   Name  ArrayRepeat
+         10   Raja  [10,10,10,10,10]
+         Or,
+
+         ID   Name  
+         10   Raja
+         10   Raja
+         10   Raja
+         10   Raja
+         10   Raja
+         Or,
+
+         ID   Name  
+         11   Raja
+         12   Raja
+         13   Raja
+         14   Raja
+         15   Raja
+
+
+repeatDF = df.withColumn("ArrayRepeat", explode(array_repeat(col("ID"), 5)))
+display(repeatDF)
+
+exploderepearDF = df.withColumn("ArrayRepeat", array_repeat(col("ID"), 5))
+display(exploderepearDF)
+
+win = Window().orderBy(lit('A'))
+df2 = df1.withColumn("RowN", row_number().over(win))
+df3 = df2.withColumn("NewID", col("Id")+col("RowN"))
+
+display(df3)
+
+outDF = df3.drop("Id","key_col","RowN").select(col("NewID").alias("Id"), "FirstName", "LastName", "Salary")
+display(outDF)
+
+
+
+27.Transformation: Subtract vs ExceptAll:
+    
+    sourceDF
+    targetDF
+
+    resultDF1 = sourceDF.substract(targetDF)
+
+    resultDF2 = sourceDF.exceptAll(targetDF)
+
+
+28.Window Function: First and Last:
+
+df --> customer_id  transaction_date  amount
+
+----convert the transaction_date column to date_type
+df = df.withColumn("transaction_date", to_date(col("transaction_date")))
+
+df.display()
+
+
+windowSpec = Window.partitionBy("customer_id")
+
+result_df = df.withColumn("first_transaction_date", first("transaction_date").over(windowSpec)) \
+              .withColumn("last_transaction_date", last("transaction_date").over(windowSpec))
+
+result_df.display()
+
+----find first and last transaction date for each customer
+
+result_df = df.withColumn("first_transaction_date", first("transaction_date").over(windowSpec)) \
+              .withColumn("last_transaction_date", last("transaction_date").over(windowSpec)).drop("transaction_date", "amount").distinct()
+
+result_df.display()
+            
+
+----convert Dataframe to view:
+    
+    df.createOrReplaceTempView("transactions")
+
+
+29.Spark Reader: Skip First N Records While Reading CSV File:
+    
+----Review Data of CSV file:
+    %fs
+    head dbfs:/FileStore/tables/baby.csv
+
+
+----skip first 4 records while reading csv file:
+df2 = spark.read.format("csv") \
+    .schema(schema1) \
+    .option("inferSchema", True) \
+    .option("header", True) \
+    .option("sep", ",") \
+    .option("skipRows", 4) \
+    .load("/FileStore/tables/channels.csv")
+
+df2.show()
+df2.printSchema()
+df2.count()
+df2.display()
+
+30.Skip Specific Range of Records While Reading CSV File:
+
+fullDF = spark.read.format("csv") \
+    .schema(schema1) \
+    .option("inferSchema", True) \
+    .option("header", True) \
+    .option("sep", ",") \
+    .load("/FileStore/tables/channels.csv")
+
+skipStartDF = spark.read.format("csv") \
+    .schema(schema1) \
+    .option("inferSchema", True) \
+    .option("header", True) \
+    .option("sep", ",") \
+    .option("skipRows", 4) \
+    .load("/FileStore/tables/channels.csv")
+
+skipEndtDF = spark.read.format("csv") \
+    .schema(schema1) \
+    .option("inferSchema", True) \
+    .option("header", True) \
+    .option("sep", ",") \
+    .option("skipRows", 10) \
+    .load("/FileStore/tables/channels.csv")
+
+    Then, 
+    deltaDF = fullDF.substract(skipStartDF)
+    display(deltaDF)
+
+    and then combine deltaDF and skipEndDF
+
+    finalDF = deltaDF.union(skipEndDF)
+    display(finalDF)
+
+
+31.Spark SQL: Except Columns in Select Clause:
+    
+    %sql
+    select* except(column1, column5) from product
+
+    for joing:
+        
+    select p.* except(brand), c.* except(customer_id) from product p join customer c  on c.purchase_product_id = p.product_id
+
+    in pyspark:
+        
+    display(df.select([col for col in df.columns if col not in {'category', 'active'}]))
+
+
+32.Built-In Function: TRANSFORM:
+    
+    def transform_function(df):
+        return df.withColumn("DiscountPrice", col("Price") * 0.9)
+    
+    transformed_df = df.transform(transform_function)
+
+    transformed_df.display()
+
+
+------------------------------------------------------------------------------------------------------------------
 SQL:
     
 1.Update the patients table for the allergies column.If the patient's allergies is null then replace it with 'NKA' ?
